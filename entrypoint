@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+shopt -s globstar
+
+log () {
+    echo "$@"
+}
+
+if [ "$CHECK_RUN_REPORTER_REPO_TOKEN" == '' ]; then
+    log 'CHECK_RUN_REPORTER_REPO_TOKEN is required'
+    exit 1
+fi
+
+if [ "$CHECK_RUN_REPORTER_REPORT_GLOB" == '' ]; then
+    log 'CHECK_RUN_REPORTER_REPORT_GLOB is required'
+    exit 1
+fi
+
+CHECK_RUN_REPORTER_LABEL="${CHECK_RUN_REPORTER_LABEL:-'Checks'}"
+
+CMD='curl https://www.check-run-reporter.com/api/v1/submissions'
+CMD+=" --user token:$CHECK_RUN_REPORTER_REPO_TOKEN"
+CMD+=" -F root=$(pwd)"
+CMD+=" -F sha=$GITHUB_SHA"
+CMD+=" -F label=$CHECK_RUN_REPORTER_LABEL"
+
+for FILE in $CHECK_RUN_REPORTER_REPORT_GLOB; do
+    CMD+=" -F $FILE"
+done
+
+$CMD
