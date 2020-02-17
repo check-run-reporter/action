@@ -5,47 +5,34 @@
 
 ## Usage
 
-First, get your `CHECK_RUN_REPORTER_REPO_TOKEN` from
+First, get your `CHECK_RUN_REPORTER_TOKEN` from
 [check-run-reporter.com](https://check-run-reporter.com/repos) and set it as a
 [secret in your GitHub repo](https://developer.github.com/actions/managing-workflows/storing-secrets/).
 
-Use `CHECK_RUN_REPORTER_LABEL` and `CHECK_RUN_REPORTER_REPORT_GLOB` to tell the
+Use `CHECK_RUN_REPORTER_LABEL` and `CHECK_RUN_REPORTER_REPORT` to tell the
 action where your report(s) are and how to label them when they're uploaded. The
 example below shows how you might configure a JavaScript project to upload
 multiple JUnit reports.
 
-```hcl
-workflow "Test" {
-    on = "push"
-    resolves = "Report"
-}
-
-action "Install" {
-    uses = "actions/npm@master"
-
-    args = "ci"
-}
-
-action "Test" {
-    needs "Install"
-    uses "actions/npm@master"
-    args = "test"
-
-    env = {
-        REPORT_DIR = "reports/junit"
-    }
-}
-
-action "Report" {
-    uses = "check-run-reporter/actions"
-
-    secrets = ["CHECK_RUN_REPORTER_REPO_TOKEN"]
-
-    env = {
-        CHECK_RUN_REPORTER_LABEL = "Unit Tests"
-        CHECK_RUN_REPORTER_REPORT_GLOB = "reports/junit/**/*.xml"
-    }
-}
+```yml
+on: push
+name: Test
+jobs:
+    test:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@master
+            - uses: actions/setup-node@v1
+            with:
+                node-version: '12.x'
+            - run: npm install
+            - run: npm test
+              # you should probably use a version tag instead of @master
+            - uses: check-run-reporter/action@master
+              env:
+                  CHECK_RUN_REPORTER_LABEL: 'Unit Tests'
+                  CHECK_RUN_REPORTER_REPORT: 'reports/junit/**/*.xml'
+                  CHECK_RUN_REPORTER_TOKEN: ${{ secrets.CHECK_RUN_REPORTER_TOKEN }}
 ```
 
 > You can declare the action multiple times if you'd like to do separate
@@ -54,12 +41,24 @@ action "Report" {
 
 ## API
 
-`CHECK_RUN_REPORTER_REPO_TOKEN`: (required, secret) The token used to
-authenticate the report submission to check-run-reporter.com.
-`CHECK_RUN_REPORTER_LABEL`: (optional, environment) The label used for the
-submitted reports `CHECK_RUN_REPORTER_REPORT_GLOB`: (required, environment) A
-bash-style (`shopt -s globstar`) shell glob for identifying all of the reports
-to submit.
+### `CHECK_RUN_REPORTER_REPORT` (Required, string)
+
+Path or bash-compatible glob to the job's report files.
+
+### `CHECK_RUN_REPORTER_LABEL` (Optional, string)
+
+Label that should appear in the GitHub check. Defaults to the step's name.
+
+### `CHECK_RUN_REPORTER_ROOT` (Optional, string)
+
+Defaults to `$(pwd)`. If you run your tests via a `uses` step, the default
+should be fine, but if you run your tests via a `run` step, you may need to
+speriment a bit to determine what working directory was set during your tests.
+
+### `CHECK_RUN_REPORTER_TOKEN` (Required, string)
+
+Repo token to authenticate the upload. You can get your tokens from
+[https://www.check-run-reporter.com/repos](https://www.check-run-reporter.com/repos).
 
 ## Maintainers
 

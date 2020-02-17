@@ -1,32 +1,33 @@
 #!/usr/bin/env bash
 
 set -euo pipefail
-shopt -s globstar
+shopt -s globstar nullglob
 
-log () {
-    echo "$@"
-}
+LABEL=${CHECK_RUN_REPORTER_LABEL:-$GITHUB_ACTION}
+ROOT=${CHECK_RUN_REPORTER_ROOT:-$(pwd)}
+SHA=$GITHUB_SHA
+TOKEN=$CHECK_RUN_REPORTER_TOKEN
+URL=${CHECK_RUN_REPORTER_URL:-https://api.check-run-reporter.com/api/v1/submissions}
+REPORT_DIR=$CHECK_RUN_REPORTER_REPORT
 
-if [ "$CHECK_RUN_REPORTER_REPO_TOKEN" == '' ]; then
-    log 'CHECK_RUN_REPORTER_REPO_TOKEN is required'
-    exit 1
-fi
+CMD="curl -v $URL"
+CMD="$CMD --user token:'$TOKEN'"
+CMD="$CMD -F label'=$LABEL'"
+CMD="$CMD -F root='$ROOT'"
+CMD="$CMD -F sha='$SHA'"
 
-if [ "$CHECK_RUN_REPORTER_REPORT_GLOB" == '' ]; then
-    log 'CHECK_RUN_REPORTER_REPORT_GLOB is required'
-    exit 1
-fi
-
-CHECK_RUN_REPORTER_LABEL="${CHECK_RUN_REPORTER_LABEL:-'Checks'}"
-
-CMD='curl https://www.check-run-reporter.com/api/v1/submissions'
-CMD+=" --user token:$CHECK_RUN_REPORTER_REPO_TOKEN"
-CMD+=" -F root=$(pwd)"
-CMD+=" -F sha=$GITHUB_SHA"
-CMD+=" -F label=$CHECK_RUN_REPORTER_LABEL"
-
-for FILE in $CHECK_RUN_REPORTER_REPORT_GLOB; do
-    CMD+=" -F $FILE"
+for FILE in $REPORT_DIR; do
+  echo "Preparing to upload '$FILE' to Check Run Reporter"
+  CMD="$CMD -F 'report=@$(pwd)/$FILE'"
 done
 
-$CMD
+echo "Uploading reports to Check Run Reporter"
+OUT=$(eval "$CMD")
+
+if [[ $OUT =~ code ]]; then
+  echo 'Failed to upload to Check Run Reporter'
+  echo "$OUT"
+  exit 1
+fi
+
+echo "Uploaded reports to Check Run Reporter"

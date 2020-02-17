@@ -1,0 +1,17 @@
+on: push
+name: Example
+jobs:
+  example:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - run: |
+          mkdir -p ./reports/junit/
+          cp ./example/junit.xml ./reports/junit/
+        # I can't find a way to make the branch name below dynamic, so we'l
+        # need to remember to adjust it when working on features.
+      - uses: check-run-reporter/action@master
+        env:
+          CHECK_RUN_REPORTER_LABEL: 'Unit Tests'
+          CHECK_RUN_REPORTER_REPORT: 'reports/junit/**/*.xml'
+          CHECK_RUN_REPORTER_TOKEN: ${{ secrets.CHECK_RUN_REPORTER_TOKEN }}
