@@ -10,6 +10,11 @@ TOKEN=$CHECK_RUN_REPORTER_TOKEN
 URL=${CHECK_RUN_REPORTER_URL:-https://api.check-run-reporter.com/api/v1/submissions}
 REPORT_DIR=$CHECK_RUN_REPORTER_REPORT
 
+log 'Running check-run-reporter/action with the following parameters'
+log "LABEL=$LABEL"
+log "ROOT=$ROOT"
+log "SHA=$SHA"
+
 CMD="curl -v $URL"
 CMD="$CMD --user token:'$TOKEN'"
 CMD="$CMD -F label'=$LABEL'"
