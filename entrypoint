@@ -3,6 +3,10 @@
 set -euo pipefail
 shopt -s globstar nullglob
 
+log () {
+  echo "$@" 1>&2
+}
+
 LABEL=${CHECK_RUN_REPORTER_LABEL:-$GITHUB_ACTION}
 ROOT=${CHECK_RUN_REPORTER_ROOT:-$(pwd)}
 SHA=$GITHUB_SHA
