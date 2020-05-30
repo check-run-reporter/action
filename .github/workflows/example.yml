@@ -26,7 +26,7 @@ jobs:
           mkdir -p ./reports/junit/
           cp ./example/junit.xml ./reports/junit/
         # Please replace "master" with the latest git tag
-        - uses: check-run-reporter/action@master
+      - uses: check-run-reporter/action@master
         if: ${{ always() }}
         env:
           # This event name is more complex than you probably want. Since we're
