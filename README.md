@@ -27,7 +27,7 @@ jobs:
                 node-version: '12.x'
             - run: npm install
             - run: npm test
-              # you should probably use a version tag instead of @master
+              # Please replace "master" with the latest git tag
             - uses: check-run-reporter/action@master
               if: ${{ always() }}
               env:

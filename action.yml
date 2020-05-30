@@ -1,0 +1,9 @@
+name: 'Check Run Reporter'
+description: |
+  A GitHub action for uploading structured test reports to Check Run Reporter
+branding:
+  icon: 'check'
+  color: 'orange'
+runs:
+  using: 'docker'
+  image: 'Dockerfile'

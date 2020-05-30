@@ -1,17 +1,38 @@
-on: push
+on:
+  # Specifying both of these with a branch filter will run your workflow twice
+  # on each build and is only done here for testing ensuring the Action wroks.
+  - push
+  - pull_request
+  # Instead, you probably want to use either
+  # ```yml
+  # on: push
+  # ```
+  # or
+  # ```yml
+  # on:
+  #   push:
+  #     branches:
+  #       - master
+  #   pull_request:
+
 name: Example
 jobs:
   example:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
-      - run: |
+      - name: Simulate test by copying example report to the report directory
+        run: |
           mkdir -p ./reports/junit/
           cp ./example/junit.xml ./reports/junit/
-        # I can't find a way to make the branch name below dynamic, so we'l
-        # need to remember to adjust it when working on features.
-      - uses: check-run-reporter/action@master
+        # Please replace "master" with the latest git tag
+        - uses: check-run-reporter/action@master
+        if: ${{ always() }}
         env:
-          CHECK_RUN_REPORTER_LABEL: 'Unit Tests'
+          # This event name is more complex than you probably want. Since we're
+          # running this workflow for both push and pull_request events to test
+          # the action itself, we're effectively running the workflwo twice for
+          # each PR Commit and we need to differentiate in the UI.
+          CHECK_RUN_REPORTER_LABEL: 'Unit Tests (${{ github.event_name }})'
           CHECK_RUN_REPORTER_REPORT: 'reports/junit/**/*.xml'
           CHECK_RUN_REPORTER_TOKEN: ${{ secrets.CHECK_RUN_REPORTER_TOKEN }}

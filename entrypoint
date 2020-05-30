@@ -3,21 +3,45 @@
 set -euo pipefail
 shopt -s globstar nullglob
 
+determine_sha () {
+  case "$GITHUB_EVENT_NAME" in
+    push) echo "$GITHUB_SHA";;
+    pull_request)
+      log "Fetching $GITHUB_HEAD_REF from GitHub"
+      git fetch origin "$GITHUB_HEAD_REF"
+      git rev-parse --verify "origin/$GITHUB_HEAD_REF"
+    ;;
+    *) die "Unrecognized GitHub Event $GITHUB_EVENT_NAME"
+  esac
+}
+
+die () {
+  log "$@"
+  exit 1
+}
+
 log () {
   echo "$@" 1>&2
 }
 
-LABEL=${CHECK_RUN_REPORTER_LABEL:-$GITHUB_ACTION}
-ROOT=${CHECK_RUN_REPORTER_ROOT:-$(pwd)}
-SHA=$GITHUB_SHA
-TOKEN=$CHECK_RUN_REPORTER_TOKEN
-URL=${CHECK_RUN_REPORTER_URL:-https://api.check-run-reporter.com/api/v1/submissions}
-REPORT_DIR=$CHECK_RUN_REPORTER_REPORT
-
 log 'Running check-run-reporter/action with the following parameters'
+
+LABEL=${CHECK_RUN_REPORTER_LABEL:-$GITHUB_ACTION}
 log "LABEL=$LABEL"
+
+ROOT=${CHECK_RUN_REPORTER_ROOT:-$(pwd)}
 log "ROOT=$ROOT"
+
+SHA=$(determine_sha)
 log "SHA=$SHA"
+
+TOKEN=$CHECK_RUN_REPORTER_TOKEN
+
+URL=${CHECK_RUN_REPORTER_URL:-https://api.check-run-reporter.com/api/v1/submissions}
+log "URL=$URL"
+
+REPORT_DIR=$CHECK_RUN_REPORTER_REPORT
+log "REPORT_DIR=$REPORT_DIR"
 
 CMD="curl -v $URL"
 CMD="$CMD --user token:'$TOKEN'"
