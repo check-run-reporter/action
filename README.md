@@ -29,6 +29,7 @@ jobs:
             - run: npm test
               # you should probably use a version tag instead of @master
             - uses: check-run-reporter/action@master
+              if: ${{ always() }}
               env:
                   CHECK_RUN_REPORTER_LABEL: 'Unit Tests'
                   CHECK_RUN_REPORTER_REPORT: 'reports/junit/**/*.xml'
@@ -38,6 +39,10 @@ jobs:
 > You can declare the action multiple times if you'd like to do separate
 > submissions with different labels (for example, you want separate style report
 > and test report submissions).
+
+> Note the `if: ${{ always() }}`. By default, GitHub actions exit as soon as
+> step fails. You'll need to tell GitHub to run even in event of failure to
+> ensure your reports are submitted.
 
 ## API
 
