@@ -5,12 +5,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
-      - run: |
+      - name: Simulate test by copying example report to the report directory
+        run: |
           mkdir -p ./reports/junit/
           cp ./example/junit.xml ./reports/junit/
-        # I can't find a way to make the branch name below dynamic, so we'l
-        # need to remember to adjust it when working on features.
-      - uses: check-run-reporter/action@master
+        # Please replace "master" with the latest git tag
+      - uses: check-run-reporter/action@reproduce-no-results
+        if: ${{ always() }}
         env:
           CHECK_RUN_REPORTER_LABEL: 'Unit Tests'
           CHECK_RUN_REPORTER_REPORT: 'reports/junit/**/*.xml'
