@@ -9,7 +9,7 @@ determine_sha () {
     pull_request)
       set -x
 
-      if [ -n "$CHECK_RUN_REPORTER_ROOT" ]; then
+      if [ -n "${CHECK_RUN_REPORTER_ROOT:-}" ]; then
         pushd "$CHECK_RUN_REPORTER_ROOT"
       fi
 
@@ -21,7 +21,7 @@ determine_sha () {
 
       git rev-parse --verify "origin/$GITHUB_HEAD_REF"
 
-      if [ -n "$CHECK_RUN_REPORTER_ROOT" ]; then
+      if [ -n "${CHECK_RUN_REPORTER_ROOT:-}" ]; then
         popd "$CHECK_RUN_REPORTER_ROOT"
       fi
     ;;
