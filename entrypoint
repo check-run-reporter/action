@@ -7,8 +7,14 @@ determine_sha () {
   case "$GITHUB_EVENT_NAME" in
     push) echo "$GITHUB_SHA";;
     pull_request)
+      set -x
+
       log "Fetching $GITHUB_HEAD_REF from GitHub"
-      git fetch origin "$GITHUB_HEAD_REF"
+
+      log "$(git remote || true)"
+      log "$(git fetch origin || true)"
+      log "$(git fetch origin "$GITHUB_HEAD_REF" || true)"
+
       git rev-parse --verify "origin/$GITHUB_HEAD_REF"
     ;;
     *) die "Unrecognized GitHub Event $GITHUB_EVENT_NAME"
