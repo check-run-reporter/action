@@ -9,6 +9,10 @@ determine_sha () {
     pull_request)
       set -x
 
+      if [ -n "$CHECK_RUN_REPORTER_ROOT" ]; then
+        pushd "$CHECK_RUN_REPORTER_ROOT"
+      fi
+
       log "Fetching $GITHUB_HEAD_REF from GitHub"
 
       log "$(git remote || true)"
@@ -16,6 +20,10 @@ determine_sha () {
       log "$(git fetch origin "$GITHUB_HEAD_REF" || true)"
 
       git rev-parse --verify "origin/$GITHUB_HEAD_REF"
+
+      if [ -n "$CHECK_RUN_REPORTER_ROOT" ]; then
+        popd "$CHECK_RUN_REPORTER_ROOT"
+      fi
     ;;
     *) die "Unrecognized GitHub Event $GITHUB_EVENT_NAME"
   esac
