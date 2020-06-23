@@ -36,6 +36,7 @@ SHA=$(determine_sha)
 log "SHA=$SHA"
 
 TOKEN=$CHECK_RUN_REPORTER_TOKEN
+log "TOKEN=${TOKEN:0:3}...${TOKEN: -3}"
 
 URL=${CHECK_RUN_REPORTER_URL:-https://api.check-run-reporter.com/api/v1/submissions}
 log "URL=$URL"
