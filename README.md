@@ -46,7 +46,7 @@ jobs:
             - uses: actions/setup-node@v1
             with:
                 node-version: '12.x'
-            - run: npm install
+            - run: npm ci
             - run: npm test
               # Please replace "master" with the latest git tag
             - uses: check-run-reporter/action@v2.0.0-rc1

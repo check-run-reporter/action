@@ -18,7 +18,7 @@ jobs:
       - uses: actions/setup-node@v2.1.1
         with:
           node-version: '12'
-      - run: npm install
+      - run: npm ci
       - run: npm run lint:es
         env:
           ESLINT_FORMAT_OPTIONS:
@@ -35,7 +35,7 @@ jobs:
       - uses: actions/setup-node@v2.1.1
         with:
           node-version: '12'
-      - run: npm install
+      - run: npm ci
       - run: mkdir -p reports/style
       - run: npm run lint:types
         env:
@@ -52,7 +52,7 @@ jobs:
       - uses: actions/setup-node@v2.1.1
         with:
           node-version: '12'
-      - run: npm install
+      - run: npm ci
       - run: make
       - run: |
           if git status | grep -q dist; then
