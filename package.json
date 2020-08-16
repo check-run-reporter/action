@@ -16,5 +16,14 @@
   "bugs": {
     "url": "https://github.com/check-run-reporter/action/issues"
   },
-  "homepage": "https://www.check-run-reporter.com"
+  "homepage": "https://www.check-run-reporter.com",
+  "devDependencies": {
+    "typescript": "^3.9.7"
+  },
+  "dependencies": {
+    "@babel/core": "^7.11.1",
+    "@babel/preset-env": "^7.11.0",
+    "@babel/preset-typescript": "^7.10.4",
+    "@babel/register": "^7.10.5"
+  }
 }

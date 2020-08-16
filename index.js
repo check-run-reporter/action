@@ -1,1 +1,4 @@
-console.log('It works!');
+'use strict';
+
+require('./babel-register')
+require('./src/index');
