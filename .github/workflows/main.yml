@@ -45,3 +45,23 @@ jobs:
         with:
           report: 'reports/style/tsc.log'
           token: ${{ secrets.CHECK_RUN_REPORTER_TOKEN }}
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2.3.2
+      - uses: actions/setup-node@v2.1.1
+        with:
+          node-version: '12'
+      - run: npm install
+      - run: make
+      - run: |
+          if git status | grep -q dist; then
+            # if grep exits with zero, that means we found changes to dist and
+            # need to fail the job
+            exit 1
+          fi
+      - name:
+          It looks like there are changes to `dist`. Please run `make` locally
+          and commit the changes
+        run: git diff
+        if: ${{ failure() }}
