@@ -6,7 +6,6 @@ branding:
   color: 'orange'
 inputs:
   label:
-    default: $GITHUB_ACTION
     description:
       Label that should appear in the GitHub check. Defaults to the step's name.
     required: false
@@ -14,7 +13,6 @@ inputs:
     description: Path or glob to the job's report files.
     required: true
   root:
-    default: $(PWD)
     description:
       Defaults to `$(pwd)`. If you run your tests via a `uses` step, the default
       should be fine, but if you run your tests via a `run` step, you may need
