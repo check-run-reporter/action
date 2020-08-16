@@ -23,7 +23,7 @@ jobs:
         env:
           ESLINT_FORMAT_OPTIONS:
             '--format json-with-metadata --output-file reports/style/eslint.json'
-      - uses: check-run-reporter/action@typescript-action
+      - uses: check-run-reporter/action@9e43e9faf400e15ec34a2e4aaaa1a709ff422eed
         if: ${{ always() }}
         with:
           report: 'reports/style/eslint.json'
@@ -40,7 +40,7 @@ jobs:
       - run: npm run lint:types
         env:
           TSC_OPTIONS: '| tee reports/style/tsc.log'
-      - uses: check-run-reporter/action@typescript-action
+      - uses: check-run-reporter/action@9e43e9faf400e15ec34a2e4aaaa1a709ff422eed
         if: ${{ always() }}
         with:
           report: 'reports/style/tsc.log'

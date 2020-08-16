@@ -1,3 +1,8 @@
+import fs from 'fs';
+import util from 'util';
+
+import axios, {AxiosError} from 'axios';
+import FormData from 'form-data';
 import * as core from '@actions/core';
 import * as glob from '@actions/glob';
 import * as github from '@actions/github';
@@ -9,14 +14,14 @@ export function determineRoot(): string {
   core.startGroup('Determining "root" path');
   let root = core.getInput('root');
   if (!root) {
-    core.debug('"root" not set, trying environment variable');
+    core.info('"root" not set, trying environment variable');
     const gw = process.env.GITHUB_WORKSPACE;
     if (gw) {
       root = gw;
     }
   }
   if (!root) {
-    core.debug('"root" not set, trying pwd');
+    core.info('"root" not set, trying pwd');
     root = process.cwd();
   }
   core.endGroup();
@@ -48,8 +53,6 @@ export async function findReports(): Promise<string[]> {
  * Main entrypoint
  */
 async function main() {
-  console.log(github.context);
-
   // For lack of a better pattern, we'll default to the same pattern that GitHub
   // uses for checks at the bottom of the PR.
   const label =
@@ -64,19 +67,47 @@ async function main() {
 
   const {sha} = github.context;
 
-  console.log({
-    files,
-    label,
-    root,
-    sha,
-    token,
-    url,
-  });
+  const formData = new FormData();
+  for (const file of files) {
+    formData.append('report', fs.createReadStream(file));
+  }
+
+  formData.append('label', label);
+  formData.append('root', root);
+  formData.append('sha', sha);
+
+  core.startGroup('Uploading report to Check Run Reporter');
+  try {
+    await axios.post(url, formData, {
+      auth: {password: token, username: 'token'},
+      headers: {
+        ...formData.getHeaders(),
+      },
+    });
+  } catch (err) {
+    if (!(err as AxiosError).isAxiosError) {
+      throw err;
+    }
+
+    const axerr = err as AxiosError;
+
+    if (!axerr.response) {
+      // we didn't get a response, let the unhandled error error handler deal
+      // with it
+      core.error('Failed to make upload request');
+      throw err;
+    }
+
+    core.error(`Request ID: ${axerr.response.headers['x-request-id']}`);
+    core.error(util.inspect(axerr.response.data, {depth: 2}));
+    core.setFailed(axerr.message);
+  }
+  core.endGroup();
 }
 
 if (require.main === module) {
   main().catch((err) => {
-    core.error(err);
+    core.error(err.stack);
     core.setFailed(err.message);
   });
 }
