@@ -1,6 +1,6 @@
 on:
   # Specifying both of these with a branch filter will run your workflow twice
-  # on each build and is only done here for testing ensuring the Action wroks.
+  # on each build and is only done here for testing ensuring the Action works.
   - push
   - pull_request
   # Instead, you probably want to use either
@@ -25,14 +25,14 @@ jobs:
         run: |
           mkdir -p ./reports/junit/
           cp ./example/junit.xml ./reports/junit/
-        # Please replace "master" with the latest git tag
-      - uses: check-run-reporter/action@master
+        # Please use the latest git tag here.
+      - uses: check-run-reporter/action@typescript-action
         if: ${{ always() }}
-        env:
-          # This event name is more complex than you probably want. Since we're
+        with:
+          # This label is more complex than you probably want. Since we're
           # running this workflow for both push and pull_request events to test
           # the action itself, we're effectively running the workflwo twice for
           # each PR Commit and we need to differentiate in the UI.
-          CHECK_RUN_REPORTER_LABEL: 'Unit Tests (${{ github.event_name }})'
-          CHECK_RUN_REPORTER_REPORT: 'reports/junit/**/*.xml'
-          CHECK_RUN_REPORTER_TOKEN: ${{ secrets.CHECK_RUN_REPORTER_TOKEN }}
+          label: 'Unit Tests (${{ github.event_name }})'
+          report: 'reports/junit/**/*.xml'
+          token: ${{ secrets.CHECK_RUN_REPORTER_TOKEN }}

@@ -1,0 +1,20 @@
+{
+  "name": "check-run-reporter-action",
+  "version": "0.0.0-development",
+  "description": "A GitHub action for uploading structured test reports to > [check-run-reporter.com](https://www.check-run-reporter.com).",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/check-run-reporter/action.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/check-run-reporter/action/issues"
+  },
+  "homepage": "https://www.check-run-reporter.com"
+}

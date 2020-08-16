@@ -4,6 +4,35 @@ description: |
 branding:
   icon: 'check'
   color: 'orange'
+inputs:
+  label:
+    default: $GITHUB_ACTION
+    description:
+      Label that should appear in the GitHub check. Defaults to the step's name.
+    required: false
+  report:
+    description: Path or glob to the job's report files.
+    required: true
+  root:
+    default: $(PWD)
+    description:
+      Defaults to `$(pwd)`. If you run your tests via a `uses` step, the default
+      should be fine, but if you run your tests via a `run` step, you may need
+      to speriment a bit to determine what working directory was set during your
+      tests.
+    required: false
+  token:
+    description:
+      Repo token to authenticate the upload. You can get your tokens from
+      [https://www.check-run-reporter.com/repos](https://www.check-run-reporter.com/repos).
+    required: true
+  url:
+    default: 'https://api.check-run-reporter.com/api/v1/submissions'
+    description:
+      Mostly here for future use, this let's us specify an alternate endpoint
+      for testing new features. Unless specifically told to do so by support,
+      please don't change this value.
+    required: false
 runs:
-  using: 'docker'
-  image: 'Dockerfile'
+  using: 'node12'
+  main: 'index.js'
