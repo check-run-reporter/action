@@ -2,7 +2,6 @@
   "name": "check-run-reporter-action",
   "version": "0.0.0-development",
   "description": "A GitHub action for uploading structured test reports to > [check-run-reporter.com](https://www.check-run-reporter.com).",
-  "main": "src/ndex.ts",
   "scripts": {
     "eslint": "eslint ${ESLINT_FORMAT_OPTIONS:-} --ignore-pattern 'example/**' --ignore-pattern 'dist/**' --ignore-path .gitignore ",
     "lint:es": "npm run --silent eslint -- .",
@@ -29,7 +28,7 @@
     "@ianwremmel/eslint-plugin-ianwremmel": "^4.1.1",
     "@typescript-eslint/eslint-plugin": "^3.9.0",
     "@typescript-eslint/parser": "^3.9.0",
-    "@zeit/ncc": "^0.22.3",
+    "@vercel/ncc": "^0.23.0",
     "eslint": "^7.7.0",
     "eslint-config-prettier": "^6.11.0",
     "eslint-plugin-babel": "^5.3.1",

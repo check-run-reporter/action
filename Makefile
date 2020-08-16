@@ -40,17 +40,17 @@ clean:
 > rm -rf .sentinel build dist
 .PHONY: clean
 
-.sentinel/lint/es: $(SRC)
+.sentinel/lint/es: $(SRC) package.json
 > npm run lint:es
 > @mkdir -p $(@D)
 > @touch $@
 
-.sentinel/lint/types: $(SRC)
+.sentinel/lint/types: $(SRC) package.json
 > npm run lint:types
 > @mkdir -p $(@D)
 > @touch $@
 
-.sentinel/build: $(SRC)
+.sentinel/build: $(SRC) package.json
 > $(NPX) babel --extensions '.js,.ts' --source-maps -d build src
 > @mkdir -p $(@D)
 > @touch $@
