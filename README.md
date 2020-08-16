@@ -3,15 +3,36 @@
 > A GitHub action for uploading structured test reports to
 > [check-run-reporter.com](https://www.check-run-reporter.com).
 
+## V2
+
+The first version of `check-run-reporter/action` was thrown together pretty
+early on as far as GitHub Action are concerned. All actions had to be written as
+Docker images. Windows support was difficult, if not impossible. Configuration
+was driven by environment variables. Workflows were configured with HCL instead
+of Yaml.
+
+Times have changed. V2 is completely rewritten in TypeScript. Rather than doing
+everyting with bash and curl, we now get the control flow of a modern language
+and we can rely on actions.yml to typecheck our configuration instead of just
+hoping environment variables have been set.
+
+### Breaking Change
+
+Since we're using inputs instead of environment variables, you'll need to
+
+1. Use `with` instead of `env` to configure this action.
+2. Remove the `CHECK_RUN_REPORTER_` prefix.
+3. Make the variables lowerase.
+
 ## Usage
 
-First, get your `CHECK_RUN_REPORTER_TOKEN` from
+First, get your Check Run Reporter repo token from
 [check-run-reporter.com](https://check-run-reporter.com/repos) and set it as a
 [secret in your GitHub repo](https://developer.github.com/actions/managing-workflows/storing-secrets/).
 
-Use `CHECK_RUN_REPORTER_LABEL` and `CHECK_RUN_REPORTER_REPORT` to tell the
-action where your report(s) are and how to label them when they're uploaded. The
-example below shows how you might configure a JavaScript project to upload
+At a minimum, you must specify the `report` and `token` inputs in your workflow.
+
+The example below shows how you might configure a JavaScript project to upload
 multiple JUnit reports.
 
 ```yml
@@ -28,42 +49,23 @@ jobs:
             - run: npm install
             - run: npm test
               # Please replace "master" with the latest git tag
-            - uses: check-run-reporter/action@master
+            - uses: check-run-reporter/action@v2.0.0-rc1
+              # always run, otherwise you'll only see results for passing builds
               if: ${{ always() }}
-              env:
-                  CHECK_RUN_REPORTER_LABEL: 'Unit Tests'
-                  CHECK_RUN_REPORTER_REPORT: 'reports/junit/**/*.xml'
-                  CHECK_RUN_REPORTER_TOKEN: ${{ secrets.CHECK_RUN_REPORTER_TOKEN }}
+              with:
+                token: ${{ secrets.CHECK_RUN_REPORTER_TOKEN }}
+                report: 'reports/junit/**/*.xml'
 ```
 
-> You can declare the action multiple times if you'd like to do separate
-> submissions with different labels (for example, you want separate style report
-> and test report submissions).
+You can declare the action multiple times if you'd like to do separate
+submissions with different labels (for example, you want separate style report
+and test report submissions).
 
-> Note the `if: ${{ always() }}`. By default, GitHub actions exit as soon as
-> step fails. You'll need to tell GitHub to run even in event of failure to
-> ensure your reports are submitted.
+Note the `if: ${{ always() }}`. By default, GitHub actions exit as soon as step
+fails. You'll need to tell GitHub to run even in event of failure to ensure your
+reports are submitted.
 
-## API
-
-### `CHECK_RUN_REPORTER_REPORT` (Required, string)
-
-Path or bash-compatible glob to the job's report files.
-
-### `CHECK_RUN_REPORTER_LABEL` (Optional, string)
-
-Label that should appear in the GitHub check. Defaults to the step's name.
-
-### `CHECK_RUN_REPORTER_ROOT` (Optional, string)
-
-Defaults to `$(pwd)`. If you run your tests via a `uses` step, the default
-should be fine, but if you run your tests via a `run` step, you may need to
-speriment a bit to determine what working directory was set during your tests.
-
-### `CHECK_RUN_REPORTER_TOKEN` (Required, string)
-
-Repo token to authenticate the upload. You can get your tokens from
-[https://www.check-run-reporter.com/repos](https://www.check-run-reporter.com/repos).
+> See [action.yml](action.yml) for full configuration options.
 
 ## Maintainers
 
@@ -77,4 +79,4 @@ for the project.
 
 ## License
 
-[MIT](LICENSE) &copy; Ian Remmel, LLC 2019
+[MIT](LICENSE) &copy; Ian Remmel, LLC 2019-202
