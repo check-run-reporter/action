@@ -4,10 +4,44 @@ jobs:
   fixup:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@v2.3.2
       - uses: ianwremmel/prevent-fixup-commits@v1.0.1
   nopush:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@v2.3.2
       - uses: ianwremmel/prevent-nopush-commits@v1.0.2
+  eslint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2.3.2
+      - uses: actions/setup-node@v2.1.1
+        with:
+          node-version: '12'
+      - run: npm install
+      - run: npm run lint:es
+        env:
+          ESLINT_FORMAT_OPTIONS:
+            '--format json-with-metadata --output-file reports/style/eslint.json'
+      - uses: check-run-reporter/action@typescript-action
+        if: ${{ always() }}
+        with:
+          report: 'reports/style/eslint.json'
+          token: ${{ secrets.CHECK_RUN_REPORTER_TOKEN }}
+  tsc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2.3.2
+      - uses: actions/setup-node@v2.1.1
+        with:
+          node-version: '12'
+      - run: npm install
+      - run: mkdir -p reports/style
+      - run: npm run lint:types
+        env:
+          TSC_OPTIONS: '| tee reports/style/tsc.log'
+      - uses: check-run-reporter/action@typescript-action
+        if: ${{ always() }}
+        with:
+          report: 'reports/style/tsc.log'
+          token: ${{ secrets.CHECK_RUN_REPORTER_TOKEN }}
