@@ -49,7 +49,7 @@ jobs:
             - run: npm ci
             - run: npm test
               # Please replace "master" with the latest git tag
-            - uses: check-run-reporter/action@v2.0.0-rc3
+            - uses: check-run-reporter/action@v2.0.0-rc4
               # always run, otherwise you'll only see results for passing builds
               if: ${{ always() }}
               with:
