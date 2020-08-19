@@ -78,12 +78,17 @@ async function main() {
 
   core.startGroup('Uploading report to Check Run Reporter');
   try {
-    await axios.post(url, formData, {
+    const response = await axios.post(url, formData, {
       auth: {password: token, username: 'token'},
       headers: {
         ...formData.getHeaders(),
       },
     });
+
+    core.info(`Request ID: ${response.headers['x-request-id']}`);
+    core.info(`Status: ${response.status}`);
+    core.info(`StatusText: ${response.statusText}`);
+    core.info(JSON.stringify(response.data, null, 2));
   } catch (err) {
     if (!(err as AxiosError).isAxiosError) {
       throw err;

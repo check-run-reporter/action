@@ -9763,7 +9763,7 @@ async function main() {
   core.startGroup('Uploading report to Check Run Reporter');
 
   try {
-    await _axios.default.post(url, formData, {
+    const response = await _axios.default.post(url, formData, {
       auth: {
         password: token,
         username: 'token'
@@ -9771,6 +9771,10 @@ async function main() {
       headers: { ...formData.getHeaders()
       }
     });
+    core.info(`Request ID: ${response.headers['x-request-id']}`);
+    core.info(`Status: ${response.status}`);
+    core.info(`StatusText: ${response.statusText}`);
+    core.info(response.data);
   } catch (err) {
     if (!err.isAxiosError) {
       throw err;
