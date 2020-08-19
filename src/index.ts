@@ -78,6 +78,10 @@ async function main() {
 
   core.startGroup('Uploading report to Check Run Reporter');
   try {
+    core.info(`Label: ${label}`);
+    core.info(`Root: ${root}`);
+    core.info(`SHA: ${sha}`);
+
     const response = await axios.post(url, formData, {
       auth: {password: token, username: 'token'},
       headers: {

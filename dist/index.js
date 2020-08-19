@@ -9763,6 +9763,9 @@ async function main() {
   core.startGroup('Uploading report to Check Run Reporter');
 
   try {
+    core.info(`Label: ${label}`);
+    core.info(`Root: ${root}`);
+    core.info(`SHA: ${sha}`);
     const response = await _axios.default.post(url, formData, {
       auth: {
         password: token,
