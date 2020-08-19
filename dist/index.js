@@ -9774,7 +9774,7 @@ async function main() {
     core.info(`Request ID: ${response.headers['x-request-id']}`);
     core.info(`Status: ${response.status}`);
     core.info(`StatusText: ${response.statusText}`);
-    core.info(response.data);
+    core.info(JSON.stringify(response.data, null, 2));
   } catch (err) {
     if (!err.isAxiosError) {
       throw err;
