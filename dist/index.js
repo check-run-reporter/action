@@ -9670,6 +9670,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.determineRoot = determineRoot;
+exports.determineSha = determineSha;
 exports.findReports = findReports;
 
 var _fs = _interopRequireDefault(__webpack_require__(747));
@@ -9717,6 +9718,31 @@ function determineRoot() {
   return root;
 }
 /**
+ * Determines the SHA according the the action that triggered this workflow
+ */
+
+
+function determineSha() {
+  core.startGroup('Determing SHA');
+
+  if (github.context.eventName === 'pull_request') {
+    core.info(`Workflow triggered by "pull_request" event, reading SHA from webhook payload`);
+    const pullRequestPayload = github.context.payload;
+    const {
+      sha
+    } = pullRequestPayload.pull_request.head;
+    core.endGroup();
+    return sha;
+  }
+
+  core.info(`Workflow triggered by "${github.context.eventName}" event, assuming default SHA is valid`);
+  const {
+    sha
+  } = github.context;
+  core.endGroup();
+  return sha;
+}
+/**
  * Finds all reports according to the workflow-specified glob.
  */
 
@@ -9748,9 +9774,7 @@ async function main() {
   const url = core.getInput('url');
   const root = determineRoot();
   const files = await findReports();
-  const {
-    sha
-  } = github.context;
+  const sha = determineSha();
   const formData = new _formData.default();
 
   for (const file of files) {
@@ -9763,6 +9787,7 @@ async function main() {
   core.startGroup('Uploading report to Check Run Reporter');
 
   try {
+    // I think it's possible to get the SHA from the pull_request event in event this is a pull request and not a push
     core.info(`Label: ${label}`);
     core.info(`Root: ${root}`);
     core.info(`SHA: ${sha}`);
