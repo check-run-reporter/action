@@ -9797,7 +9797,8 @@ async function main() {
         username: 'token'
       },
       headers: { ...formData.getHeaders()
-      }
+      },
+      maxContentLength: Infinity
     });
     core.info(`Request ID: ${response.headers['x-request-id']}`);
     core.info(`Status: ${response.status}`);

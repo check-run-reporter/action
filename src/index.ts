@@ -113,6 +113,7 @@ async function main() {
       headers: {
         ...formData.getHeaders(),
       },
+      maxContentLength: Infinity,
     });
 
     core.info(`Request ID: ${response.headers['x-request-id']}`);
