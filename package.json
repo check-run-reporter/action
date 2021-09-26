@@ -3,9 +3,6 @@
   "version": "0.0.0-development",
   "description": "A GitHub action for uploading structured test reports to > [check-run-reporter.com](https://www.check-run-reporter.com).",
   "scripts": {
-    "eslint": "eslint ${ESLINT_FORMAT_OPTIONS:-} --ignore-pattern 'example/**' --ignore-pattern 'dist/**' --ignore-path .gitignore ",
-    "lint:es": "npm run --silent eslint -- .",
-    "lint:types": "bash -c \"tsc $TSC_OPTIONS\"",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -19,37 +16,12 @@
     "url": "https://github.com/check-run-reporter/action/issues"
   },
   "homepage": "https://www.check-run-reporter.com",
-  "devDependencies": {
-    "@babel/cli": "^7.10.5",
-    "@babel/core": "^7.11.1",
-    "@babel/preset-env": "^7.11.0",
-    "@babel/preset-typescript": "^7.10.4",
-    "@babel/register": "^7.10.5",
-    "@ianwremmel/eslint-plugin-ianwremmel": "^4.1.1",
-    "@types/node": "^14.0.27",
-    "@typescript-eslint/eslint-plugin": "^3.9.0",
-    "@typescript-eslint/parser": "^3.9.0",
-    "@vercel/ncc": "^0.23.0",
-    "eslint": "^7.7.0",
-    "eslint-config-prettier": "^6.11.0",
-    "eslint-plugin-babel": "^5.3.1",
-    "eslint-plugin-compat": "^3.8.0",
-    "eslint-plugin-eslint-comments": "^3.2.0",
-    "eslint-plugin-import": "^2.22.0",
-    "eslint-plugin-jsx-a11y": "^6.3.1",
-    "eslint-plugin-markdown": "^1.0.2",
-    "eslint-plugin-prettier": "^3.1.4",
-    "eslint-plugin-react": "^7.20.6",
-    "eslint-plugin-react-hooks": "^4.0.8",
-    "prettier": "^2.0.5",
-    "typescript": "^3.9.7"
-  },
   "dependencies": {
-    "@actions/core": "^1.2.6",
-    "@actions/github": "^4.0.0",
-    "@actions/glob": "^0.1.0",
-    "@octokit/webhooks": "^7.11.0",
-    "axios": "^0.19.2",
-    "form-data": "^3.0.0"
+    "@actions/core": "^1.5.0",
+    "@actions/github": "^5.0.0",
+    "@actions/glob": "^0.2.0",
+    "@octokit/webhooks-types": "^4.8.0",
+    "axios": "^0.21.4",
+    "form-data": "^4.0.0"
   }
 }

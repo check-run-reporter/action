@@ -1,12 +1,14 @@
-import fs from 'fs';
-import util from 'util';
-
-import axios, {AxiosError} from 'axios';
-import FormData from 'form-data';
 import * as core from '@actions/core';
 import * as glob from '@actions/glob';
 import * as github from '@actions/github';
-import * as Webhooks from '@octokit/webhooks';
+// webhooks-types doesn't have a valid `main` property, so eslint can't tell
+// it's type-only
+// eslint-disable-next-line import/no-unresolved
+import type {PullRequestEvent} from '@octokit/webhooks-types';
+
+// this is a little weird: we're loading by path instead of by package because
+// we need main to point at src during dev but dist during release.
+import {submit} from '../../../src';
 
 /**
  * Detmerins the value to send as "root".
@@ -38,8 +40,7 @@ export function determineSha(): string {
     core.info(
       `Workflow triggered by "pull_request" event, reading SHA from webhook payload`
     );
-    const pullRequestPayload = github.context
-      .payload as Webhooks.EventPayloads.WebhookPayloadPullRequest;
+    const pullRequestPayload = github.context.payload as PullRequestEvent;
     const {sha} = pullRequestPayload.pull_request.head;
     core.endGroup();
     return sha;
@@ -92,53 +93,26 @@ async function main() {
 
   const sha = determineSha();
 
-  const formData = new FormData();
-  for (const file of files) {
-    formData.append('report', fs.createReadStream(file));
-  }
-
-  formData.append('label', label);
-  formData.append('root', root);
-  formData.append('sha', sha);
-
-  core.startGroup('Uploading report to Check Run Reporter');
-  try {
-    // I think it's possible to get the SHA from the pull_request event in event this is a pull request and not a push
-    core.info(`Label: ${label}`);
-    core.info(`Root: ${root}`);
-    core.info(`SHA: ${sha}`);
-
-    const response = await axios.post(url, formData, {
-      auth: {password: token, username: 'token'},
-      headers: {
-        ...formData.getHeaders(),
+  await submit(
+    {
+      label,
+      report: files,
+      root,
+      sha,
+      token,
+      url,
+    },
+    {
+      logger: {
+        debug: core.debug.bind(core),
+        error: core.error.bind(core),
+        group: core.group.bind(core),
+        groupEnd: core.endGroup.bind(core),
+        info: core.info.bind(core),
+        warn: core.warning.bind(core),
       },
-      maxContentLength: Infinity,
-    });
-
-    core.info(`Request ID: ${response.headers['x-request-id']}`);
-    core.info(`Status: ${response.status}`);
-    core.info(`StatusText: ${response.statusText}`);
-    core.info(JSON.stringify(response.data, null, 2));
-  } catch (err) {
-    if (!(err as AxiosError).isAxiosError) {
-      throw err;
     }
-
-    const axerr = err as AxiosError;
-
-    if (!axerr.response) {
-      // we didn't get a response, let the unhandled error error handler deal
-      // with it
-      core.error('Failed to make upload request');
-      throw err;
-    }
-
-    core.error(`Request ID: ${axerr.response.headers['x-request-id']}`);
-    core.error(util.inspect(axerr.response.data, {depth: 2}));
-    core.setFailed(axerr.message);
-  }
-  core.endGroup();
+  );
 }
 
 if (require.main === module) {
