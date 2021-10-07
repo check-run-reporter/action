@@ -12,4 +12,5 @@ export declare type Logger = Pick<Console, LogLevel | 'group' | 'groupEnd'>;
  */
 export declare function toCommandValue(input: any): string;
 export declare const logger: Logger;
+export declare const silentLogger: Logger;
 export {};

@@ -9,9 +9,16 @@ inputs:
     description:
       Label that should appear in the GitHub check. Defaults to the step's name.
     required: false
+  nodeCount:
+    description: The total number of nodes you intend to spin up
+  nodeIndex:
+    description: This node's index.
   report:
-    description: Path or glob to the job's report files.
-    required: true
+    description: Path or glob to the job's report files. Separate multiple globs with a semicolon
+    required: false
+  tests:
+    description: Path or glob to the job's test files. Separate multiple globs with a semicolon
+    required: false
   root:
     description:
       Defaults to `$(pwd)`. If you run your tests via a `uses` step, the default
@@ -25,12 +32,15 @@ inputs:
       [https://www.check-run-reporter.com/repos](https://www.check-run-reporter.com/repos).
     required: true
   url:
-    default: 'https://api.check-run-reporter.com/api/v1/submissions'
+    default: 'https://api.check-run-reporter.com/api/v1'
     description:
       Mostly here for future use, this let's us specify an alternate endpoint
       for testing new features. Unless specifically told to do so by support,
       please don't change this value.
     required: false
+outputs:
+  tests:
+    description: The names of the test files to test on this node
 runs:
   using: 'node12'
   main: 'dist/index.js'

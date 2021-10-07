@@ -1,14 +1,26 @@
 import * as core from '@actions/core';
-import * as glob from '@actions/glob';
 import * as github from '@actions/github';
+import * as glob from '@actions/glob';
 // webhooks-types doesn't have a valid `main` property, so eslint can't tell
 // it's type-only
 // eslint-disable-next-line import/no-unresolved
 import type {PullRequestEvent} from '@octokit/webhooks-types';
+import axios from 'axios';
 
 // this is a little weird: we're loading by path instead of by package because
 // we need main to point at src during dev but dist during release.
+
 import {submit} from '../../../src';
+import {split} from '../../../src/commands/split';
+
+const logger = {
+  debug: core.debug.bind(core),
+  error: core.error.bind(core),
+  group: core.startGroup.bind(core),
+  groupEnd: core.endGroup.bind(core),
+  info: core.info.bind(core),
+  warn: core.warning.bind(core),
+};
 
 /**
  * Detmerins the value to send as "root".
@@ -75,6 +87,60 @@ export async function findReports(): Promise<string[]> {
   return files;
 }
 
+interface DoSplitInput {
+  readonly label: string;
+  readonly tests: string;
+  readonly token: string;
+  readonly url: string;
+}
+
+/**
+ * Wrapper around split to adapt it for github actions
+ */
+async function doSplit({label, tests, token, url}: DoSplitInput) {
+  const nodeCount = core.getInput('nodeCount');
+  const nodeIndex = core.getInput('nodeIndex');
+
+  if (!nodeCount) {
+    core.setFailed('Cannot split tests without specifying the nodeCount input');
+  }
+
+  if (!nodeIndex) {
+    core.setFailed('Cannot split tests without specifying the nodeIndex input');
+  }
+
+  try {
+    const {filenames} = await split(
+      {
+        label,
+        nodeCount: Number(nodeCount),
+        nodeIndex: Number(nodeIndex),
+        tests: [tests],
+        token,
+        url,
+      },
+      {logger}
+    );
+
+    core.info(
+      `This host should run the following ${
+        filenames.length
+      } test files:\n${filenames.join('\n')}`
+    );
+
+    core.setOutput('tests', filenames.join(' '));
+  } catch (err) {
+    if (axios.isAxiosError(err)) {
+      console.error(`Check Run Reporter return a ${err.response?.status}`);
+      if (err.response?.data?.message?.details?.[0]?.message) {
+        console.error(err.response.data.message.details[0].message);
+      }
+    } else {
+      console.error(err);
+    }
+  }
+}
+
 /**
  * Main entrypoint
  */
@@ -88,6 +154,16 @@ async function main() {
   const token = core.getInput('token');
   const url = core.getInput('url');
 
+  const tests = core.getInput('tests');
+  if (tests) {
+    return await doSplit({
+      label,
+      tests,
+      token,
+      url: `${url}/split`,
+    });
+  }
+
   const root = determineRoot();
   const files = await findReports();
 
@@ -100,24 +176,25 @@ async function main() {
       root,
       sha,
       token,
-      url,
+      url: `${url}/submissions`,
     },
     {
-      logger: {
-        debug: core.debug.bind(core),
-        error: core.error.bind(core),
-        group: core.group.bind(core),
-        groupEnd: core.endGroup.bind(core),
-        info: core.info.bind(core),
-        warn: core.warning.bind(core),
-      },
+      logger,
     }
   );
 }
 
 if (require.main === module) {
   main().catch((err) => {
+    if (axios.isAxiosError(err)) {
+      core.setFailed(err);
+
+      core.error(`Check Run Reporter returned a ${err.response?.status}`);
+      if (err.response?.data?.message?.details?.[0]?.message) {
+        core.error(err.response.data.message.details[0].message);
+      }
+    }
+
     core.error(err.stack);
-    core.setFailed(err.message);
   });
 }
