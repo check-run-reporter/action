@@ -36083,14 +36083,12 @@ __nccwpck_require__.r(__webpack_exports__);
 /* harmony import */ var util__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__nccwpck_require__.n(util__WEBPACK_IMPORTED_MODULE_0__);
 /* harmony import */ var axios__WEBPACK_IMPORTED_MODULE_1__ = __nccwpck_require__(7596);
 /* harmony import */ var axios__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__nccwpck_require__.n(axios__WEBPACK_IMPORTED_MODULE_1__);
-/* harmony import */ var axios_retry__WEBPACK_IMPORTED_MODULE_2__ = __nccwpck_require__(9205);
-/* harmony import */ var axios_retry__WEBPACK_IMPORTED_MODULE_2___default = /*#__PURE__*/__nccwpck_require__.n(axios_retry__WEBPACK_IMPORTED_MODULE_2__);
+/* harmony import */ var _lib_axios__WEBPACK_IMPORTED_MODULE_2__ = __nccwpck_require__(8950);
 /* harmony import */ var _lib_file__WEBPACK_IMPORTED_MODULE_3__ = __nccwpck_require__(8236);
 
 
 
 
-axios_retry__WEBPACK_IMPORTED_MODULE_2___default()((axios__WEBPACK_IMPORTED_MODULE_1___default()), { retries: 3 });
 /**
  * Send the full list of available test files and get back the filees
  * appropriate to this node.
@@ -36133,7 +36131,7 @@ async function split({ tests, label, nodeCount, nodeIndex, token, url }, context
         logger.info(`Label: ${label}`);
         logger.info(`Tests: ${filenames}`);
         logger.debug(`URL: ${url}`);
-        const response = await axios__WEBPACK_IMPORTED_MODULE_1___default().post(url, params, {
+        const response = await _lib_axios__WEBPACK_IMPORTED_MODULE_2__/* .client.post */ .L.post(url, params, {
             auth: { password: token, username: 'token' },
         });
         return response.data;
@@ -36270,17 +36268,16 @@ var external_fs_default = /*#__PURE__*/__nccwpck_require__.n(external_fs_);
 // EXTERNAL MODULE: external "util"
 var external_util_ = __nccwpck_require__(1669);
 var external_util_default = /*#__PURE__*/__nccwpck_require__.n(external_util_);
-// EXTERNAL MODULE: ../../node_modules/axios/index.js
-var axios = __nccwpck_require__(7596);
-var axios_default = /*#__PURE__*/__nccwpck_require__.n(axios);
 // EXTERNAL MODULE: ../../node_modules/form-data/lib/form_data.js
 var form_data = __nccwpck_require__(6271);
 var form_data_default = /*#__PURE__*/__nccwpck_require__.n(form_data);
-// EXTERNAL MODULE: ../../node_modules/axios-retry/index.js
-var axios_retry = __nccwpck_require__(9205);
-var axios_retry_default = /*#__PURE__*/__nccwpck_require__.n(axios_retry);
+// EXTERNAL MODULE: ../../node_modules/axios/index.js
+var axios = __nccwpck_require__(7596);
+var axios_default = /*#__PURE__*/__nccwpck_require__.n(axios);
 // EXTERNAL MODULE: ../../src/lib/file.ts
 var file = __nccwpck_require__(8236);
+// EXTERNAL MODULE: ../../src/lib/axios.ts + 1 modules
+var lib_axios = __nccwpck_require__(8950);
 ;// CONCATENATED MODULE: ../../src/commands/submit.ts
 
 
@@ -36288,7 +36285,6 @@ var file = __nccwpck_require__(8236);
 
 
 
-axios_retry_default()((axios_default()), { retries: 3 });
 /**
  * Submit report files to Check Run Reporter
  */
@@ -36310,7 +36306,7 @@ async function submit_submit({ label, report, root, sha, token, url }, context) 
         logger.info(`Root: ${root}`);
         logger.info(`SHA: ${sha}`);
         logger.debug(`URL: ${url}`);
-        const response = await axios_default().post(url, formData, {
+        const response = await lib_axios/* client.post */.L.post(url, formData, {
             auth: { password: token, username: 'token' },
             headers: {
                 ...formData.getHeaders(),
@@ -36343,6 +36339,44 @@ async function submit_submit({ label, report, root, sha, token, url }, context) 
 ;// CONCATENATED MODULE: ../../src/index.ts
 
 
+
+
+/***/ }),
+
+/***/ 8950:
+/***/ ((__unused_webpack_module, __webpack_exports__, __nccwpck_require__) => {
+
+"use strict";
+
+// EXPORTS
+__nccwpck_require__.d(__webpack_exports__, {
+  "L": () => (/* binding */ client)
+});
+
+// EXTERNAL MODULE: ../../node_modules/axios-retry/index.js
+var axios_retry = __nccwpck_require__(9205);
+var axios_retry_default = /*#__PURE__*/__nccwpck_require__.n(axios_retry);
+// EXTERNAL MODULE: ../../node_modules/axios/index.js
+var axios = __nccwpck_require__(7596);
+var axios_default = /*#__PURE__*/__nccwpck_require__.n(axios);
+// EXTERNAL MODULE: ../../node_modules/ci-info/index.js
+var ci_info = __nccwpck_require__(3257);
+var ci_info_default = /*#__PURE__*/__nccwpck_require__.n(ci_info);
+;// CONCATENATED MODULE: ../../package.json
+const package_namespaceObject = JSON.parse('{"name":"@check-run-reporter/cli","version":"0.0.0-development","description":"A GitHub action for uploading structured test reports to > [check-run-reporter.com](https://www.check-run-reporter.com).","bin":{"crr":"./dist/ncc/index.js"},"main":"./dist/cjs/index.js","module":"./dist/esm/index.js","types":"./dist/types/index.d.ts","engines":{"node":">=14","npm":">=7"},"scripts":{"build":"if command -v gmake 2>/dev/null; then gmake all; else make all; fi","build:types":"tsc --emitDeclarationOnly","eslint":"eslint ${ESLINT_FORMAT_OPTIONS:-} --ignore-path .gitignore","lint":"npm-run-all --continue-on-error --parallel lint:*","lint:changelog":"commitlint --from origin/main --to HEAD","lint:es":"npm run --silent eslint -- .","prelint:types":"mkdirp reports/style","lint:types":"bash -c \\"tsc --noEmit $TSC_OPTIONS\\" ","test":"TZ=UTC jest","prepare":"husky install"},"repository":{"type":"git","url":"git+https://github.com/check-run-reporter/integrations.git"},"keywords":[],"author":"Ian Remmel, LLC","license":"MIT","bugs":{"url":"https://github.com/check-run-reporter/integrations/issues"},"homepage":"https://www.check-run-reporter.com","devDependencies":{"@babel/cli":"^7.15.7","@babel/core":"^7.16.0","@babel/preset-env":"^7.16.5","@babel/preset-typescript":"^7.15.0","@babel/register":"^7.15.3","@commitlint/cli":"^13.1.0","@commitlint/config-conventional":"^13.1.0","@ianwremmel/eslint-plugin-ianwremmel":"^4.4.0","@semantic-release/exec":"^6.0.3","@types/glob":"^7.1.4","@types/jest":"^27.0.2","@types/lodash":"^4.14.178","@types/nock":"^11.1.0","@types/node":"^14.17.17","@typescript-eslint/eslint-plugin":"^4.33.0","@typescript-eslint/parser":"^4.33.0","@vercel/ncc":"^0.31.1","babel-jest":"^27.2.1","eslint":"^7.32.0","eslint-config-prettier":"^8.3.0","eslint-plugin-babel":"^5.3.1","eslint-plugin-compat":"^3.13.0","eslint-plugin-eslint-comments":"^3.2.0","eslint-plugin-import":"^2.24.2","eslint-plugin-jsx-a11y":"^6.4.1","eslint-plugin-markdown":"^2.2.1","eslint-plugin-prettier":"^4.0.0","eslint-plugin-react":"^7.26.0","eslint-plugin-react-hooks":"^4.2.0","husky":"^7.0.4","jest":"^27.2.5","jest-junit":"^13.0.0","lint-staged":"^11.2.0","markdown-toc":"^1.2.0","memfs":"^3.3.0","nock":"^13.1.3","npm-run-all":"^4.1.5","pkg":"^5.3.2","prettier":"^2.4.1","rimraf":"^3.0.2","semantic-release":"^18.0.0","semver":"^7.3.5","typescript":"^4.4.3"},"lint-staged":{"*.js":"npm run eslint -- ","*.ts":"npm run eslint -- "},"dependencies":{"axios":"^0.24.0","axios-retry":"^3.1.9","ci-info":"^3.2.0","form-data":"^4.0.0","glob":"^7.2.0","lodash":"^4.17.21","yargs":"^17.1.1"},"publishConfig":{"access":"public"},"workspaces":["integrations/action"]}');
+;// CONCATENATED MODULE: ../../src/lib/axios.ts
+
+
+
+
+const { version } = package_namespaceObject;
+const prInfo = typeof (ci_info_default()).isPR === 'boolean' ? `(PR: ${(ci_info_default()).isPR})` : '';
+const client = axios_default().create({
+    headers: {
+        'user-agent': `crr/${version} ${(ci_info_default()).name} ${prInfo}`,
+    },
+});
+axios_retry_default()(client, { retries: 3 });
 
 
 /***/ }),
