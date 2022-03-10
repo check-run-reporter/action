@@ -1,5 +1,4 @@
-import { Context } from '../lib/types';
-declare type Optional<T> = T | undefined;
+import { Context, Optional } from '../lib/types';
 interface SubmitArgs {
     readonly label: Optional<string>;
     readonly report: readonly string[];
@@ -11,5 +10,5 @@ interface SubmitArgs {
 /**
  * Submit report files to Check Run Reporter
  */
-export declare function submit({ label, report, root, sha, token, url }: SubmitArgs, context: Context): Promise<void>;
+export declare function submit(input: SubmitArgs, context: Context): Promise<void>;
 export {};

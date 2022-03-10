@@ -36144,7 +36144,7 @@ async function split({ tests, label, nodeCount, nodeIndex, token, url }, context
                 logger.error('Failed to make upload request');
                 throw err;
             }
-            logger.error(`Request ID: ${err.response.headers['x-request-id']}`);
+            logger.error(`Request ID: ${(0,_lib_axios__WEBPACK_IMPORTED_MODULE_2__/* .getRequestId */ .x)(err.response)}`);
             logger.error(util__WEBPACK_IMPORTED_MODULE_0___default().inspect(err.response.data, { depth: 2 }));
         }
         throw err;
@@ -36157,7 +36157,7 @@ async function split({ tests, label, nodeCount, nodeIndex, token, url }, context
 
 /***/ }),
 
-/***/ 4808:
+/***/ 4967:
 /***/ ((__unused_webpack_module, __webpack_exports__, __nccwpck_require__) => {
 
 "use strict";
@@ -36262,61 +36262,139 @@ const silentLogger = {
     warn: noop,
 };
 
-// EXTERNAL MODULE: external "fs"
-var external_fs_ = __nccwpck_require__(5747);
-var external_fs_default = /*#__PURE__*/__nccwpck_require__.n(external_fs_);
 // EXTERNAL MODULE: external "util"
 var external_util_ = __nccwpck_require__(1669);
 var external_util_default = /*#__PURE__*/__nccwpck_require__.n(external_util_);
-// EXTERNAL MODULE: ../../node_modules/form-data/lib/form_data.js
-var form_data = __nccwpck_require__(6271);
-var form_data_default = /*#__PURE__*/__nccwpck_require__.n(form_data);
 // EXTERNAL MODULE: ../../node_modules/axios/index.js
 var axios = __nccwpck_require__(7596);
 var axios_default = /*#__PURE__*/__nccwpck_require__.n(axios);
-// EXTERNAL MODULE: ../../src/lib/file.ts
-var file = __nccwpck_require__(8236);
+// EXTERNAL MODULE: external "fs"
+var external_fs_ = __nccwpck_require__(5747);
+var external_fs_default = /*#__PURE__*/__nccwpck_require__.n(external_fs_);
+// EXTERNAL MODULE: ../../node_modules/form-data/lib/form_data.js
+var form_data = __nccwpck_require__(6271);
+var form_data_default = /*#__PURE__*/__nccwpck_require__.n(form_data);
 // EXTERNAL MODULE: ../../src/lib/axios.ts + 1 modules
 var lib_axios = __nccwpck_require__(8950);
-;// CONCATENATED MODULE: ../../src/commands/submit.ts
-
-
+// EXTERNAL MODULE: ../../src/lib/file.ts
+var file = __nccwpck_require__(8236);
+;// CONCATENATED MODULE: ../../src/lib/upload.ts
 
 
 
 
 /**
- * Submit report files to Check Run Reporter
+ * Uploads directly to Check Run Reporter. This is a legacy solution that no
+ * longer works for large submissions thanks to new backend architecture. It
+ * remains for compatibility reasons during the transition period, but multstep
+ * is the preferred method going forward.
+ * @deprecated use multiStepUpload instead
  */
-async function submit_submit({ label, report, root, sha, token, url }, context) {
+async function singleStepUpload({ label, report, root, sha, token, url }, context) {
     const { logger } = context;
-    const files = await (0,file/* multiGlob */._)(report, context);
+    logger.info(`Label: ${label}`);
+    logger.info(`Root: ${root}`);
+    logger.info(`SHA: ${sha}`);
+    logger.debug(`URL: ${url}`);
+    const filenames = await (0,file/* multiGlob */._)(report, context);
     const formData = new (form_data_default())();
-    for (const file of files) {
-        formData.append('report', external_fs_default().createReadStream(file));
+    for (const filename of filenames) {
+        formData.append('report', external_fs_default().createReadStream(filename));
     }
     if (label) {
         formData.append('label', label);
     }
     formData.append('root', root);
     formData.append('sha', sha);
+    const response = await lib_axios/* client.post */.L.post(url, formData, {
+        auth: { password: token, username: 'token' },
+        headers: {
+            ...formData.getHeaders(),
+        },
+        maxContentLength: Infinity,
+    });
+    logger.info(`Request ID: ${(0,lib_axios/* getRequestId */.x)(response)}`);
+    logger.info(`Status: ${response.status}`);
+    logger.info(`StatusText: ${response.statusText}`);
+    logger.info(JSON.stringify(response.data, null, 2));
+    return response;
+}
+/**
+ * Orchestrates the multi-step upload process.
+ * @param args
+ * @param context
+ */
+async function multiStepUpload(args, context) {
+    const { logger } = context;
+    const { label, report, root, sha, url } = args;
+    logger.info(`Label: ${label}`);
+    logger.info(`Root: ${root}`);
+    logger.info(`SHA: ${sha}`);
+    logger.debug(`URL: ${url}/upload`);
+    const filenames = await (0,file/* multiGlob */._)(report, context);
+    logger.group('Requesing signed urls');
+    const { keys, urls, signature } = await getSignedUploadUrls(args, filenames);
+    logger.groupEnd();
+    logger.group('Uploading reports');
+    await uploadToSignedUrls(filenames, urls);
+    logger.groupEnd();
+    logger.group('Finalizing upload');
+    await finishMultistepUpload(args, keys, signature);
+    logger.groupEnd();
+}
+/** Fetches signed URLs */
+async function getSignedUploadUrls(args, filenames) {
+    const { label, root, sha, token, url } = args;
+    const response = await lib_axios/* client.post */.L.post(`${url}/upload`, { filenames, label, root, sha }, {
+        auth: { password: token, username: 'token' },
+        maxContentLength: Infinity,
+    });
+    return response.data;
+}
+/** Uploads directly to S3. */
+async function uploadToSignedUrls(filenames, urls) {
+    for (const filename of filenames) {
+        const stream = external_fs_default().createReadStream(filename);
+        await lib_axios/* client.put */.L.put(urls[filename], stream, {
+            headers: {
+                'Content-Length': String((await external_fs_default().promises.stat(filename)).size),
+            },
+        });
+    }
+}
+/**
+ * Informs Check Run Reporter that all files have been uploaded and that
+ * processing may begin.
+ */
+async function finishMultistepUpload(args, keys, signature) {
+    const { label, root, sha, token, url } = args;
+    const response = await lib_axios/* client.patch */.L.patch(`${url}/upload`, {
+        keys,
+        label,
+        root,
+        sha,
+        signature,
+    }, {
+        auth: { password: token, username: 'token' },
+        maxContentLength: Infinity,
+    });
+    return response;
+}
+
+;// CONCATENATED MODULE: ../../src/commands/submit.ts
+
+
+// eslint-disable-next-line import/no-deprecated
+
+
+/**
+ * Submit report files to Check Run Reporter
+ */
+async function submit_submit(input, context) {
+    const { logger } = context;
     try {
         logger.group('Uploading report to Check Run Reporter');
-        logger.info(`Label: ${label}`);
-        logger.info(`Root: ${root}`);
-        logger.info(`SHA: ${sha}`);
-        logger.debug(`URL: ${url}`);
-        const response = await lib_axios/* client.post */.L.post(url, formData, {
-            auth: { password: token, username: 'token' },
-            headers: {
-                ...formData.getHeaders(),
-            },
-            maxContentLength: Infinity,
-        });
-        logger.info(`Request ID: ${response.headers['x-request-id']}`);
-        logger.info(`Status: ${response.status}`);
-        logger.info(`StatusText: ${response.statusText}`);
-        logger.info(JSON.stringify(response.data, null, 2));
+        await tryMultiStepUploadOrFallbackToSingle(input, context);
     }
     catch (err) {
         if (axios_default().isAxiosError(err)) {
@@ -36326,13 +36404,35 @@ async function submit_submit({ label, report, root, sha, token, url }, context) 
                 logger.error('Failed to make upload request');
                 throw err;
             }
-            logger.error(`Request ID: ${err.response.headers['x-request-id']}`);
-            logger.error(external_util_default().inspect(err.response.data, { depth: 2 }));
+            logger.error(`Request ID: ${(0,lib_axios/* getRequestId */.x)(err.response)}`);
+            logger.error(`Response Headers: ${external_util_default().inspect(err.response.headers, { depth: 2 })}`);
+            logger.error(`Response Body: ${external_util_default().inspect(err.response.data, { depth: 2 })}`);
+            logger.error(`Request URL: ${err.response.config.url}`);
         }
         throw err;
     }
     finally {
         logger.groupEnd();
+    }
+}
+/**
+ * Attempts to use multistep upload, but falls back to the legacy system if it
+ * gets a 404. This _should_ make things future proof so it'll get more
+ * efficient once the new version is released.
+ */
+async function tryMultiStepUploadOrFallbackToSingle(input, context) {
+    try {
+        return await multiStepUpload(input, context);
+    }
+    catch (err) {
+        if (axios_default().isAxiosError(err)) {
+            // CI doesn't like safe-access here.
+            if (err.response && err.response.status === 404) {
+                // eslint-disable-next-line import/no-deprecated
+                return await singleStepUpload(input, context);
+            }
+        }
+        throw err;
     }
 }
 
@@ -36350,7 +36450,8 @@ async function submit_submit({ label, report, root, sha, token, url }, context) 
 
 // EXPORTS
 __nccwpck_require__.d(__webpack_exports__, {
-  "L": () => (/* binding */ client)
+  "L": () => (/* binding */ client),
+  "x": () => (/* binding */ getRequestId)
 });
 
 // EXTERNAL MODULE: ../../node_modules/axios-retry/index.js
@@ -36370,13 +36471,24 @@ const package_namespaceObject = JSON.parse('{"name":"@check-run-reporter/cli","v
 
 
 const { version } = package_namespaceObject;
-const prInfo = typeof (ci_info_default()).isPR === 'boolean' ? `(PR: ${(ci_info_default()).isPR})` : '';
 const client = axios_default().create({
     headers: {
-        'user-agent': `crr/${version} ${(ci_info_default()).name} ${prInfo}`,
+        'user-agent': [
+            `crr/${version}`,
+            (ci_info_default()).name,
+            typeof (ci_info_default()).isPR === 'boolean' ? `(PR: ${(ci_info_default()).isPR})` : null,
+        ]
+            .filter(Boolean)
+            .join(' '),
     },
 });
 axios_retry_default()(client, { retries: 3 });
+/**
+ * extract the request id from the response object
+ */
+function getRequestId(response) {
+    return (response.headers['x-request-id'] || response.headers['x-amz-request-id']);
+}
 
 
 /***/ }),
@@ -36711,7 +36823,7 @@ var glob = _interopRequireWildcard(__nccwpck_require__(3553));
 
 var _axios = _interopRequireDefault(__nccwpck_require__(7596));
 
-var _src = __nccwpck_require__(4808);
+var _src = __nccwpck_require__(4967);
 
 var _split = __nccwpck_require__(8988);
 
