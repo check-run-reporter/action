@@ -48,7 +48,7 @@ jobs:
                 node-version: '12.x'
             - run: npm ci
             - run: npm test
-            - uses: check-run-reporter/action@v2.10.1
+            - uses: check-run-reporter/action@v2.10.2
               # always run, otherwise you'll only see results for passing builds
               if: ${{ always() }}
               with:
