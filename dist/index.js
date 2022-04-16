@@ -36093,7 +36093,16 @@ __nccwpck_require__.r(__webpack_exports__);
  * Send the full list of available test files and get back the filees
  * appropriate to this node.
  */
-async function split({ tests, label, nodeCount, nodeIndex, token, url }, context) {
+async function split({ hostname, tests, label, nodeCount, nodeIndex, token, url }, context) {
+    const u = new URL(url);
+    if (hostname !== u.hostname) {
+        u.hostname = hostname;
+        context.logger.info('Overriding hostname', {
+            newUrl: u.href,
+            originalUrl: url,
+        });
+        url = u.href;
+    }
     // This is just here to test the buildkite plugin. The only other option I can
     // think of is to run a server locally that responds with this and use the
     // `url` param, but that currently seems like more trouble than its worth for
@@ -36332,7 +36341,7 @@ async function multiStepUpload(args, context) {
     logger.info(`SHA: ${sha}`);
     logger.debug(`URL: ${url}/upload`);
     const filenames = await (0,file/* multiGlob */._)(report, context);
-    logger.group('Requesing signed urls');
+    logger.group('Requesting signed urls');
     const { keys, urls, signature } = await getSignedUploadUrls(args, filenames);
     logger.groupEnd();
     logger.group('Uploading reports');
@@ -36420,7 +36429,17 @@ async function submit_submit(input, context) {
  * gets a 404. This _should_ make things future proof so it'll get more
  * efficient once the new version is released.
  */
-async function tryMultiStepUploadOrFallbackToSingle(input, context) {
+async function tryMultiStepUploadOrFallbackToSingle({ hostname, url, ...rest }, context) {
+    const u = new URL(url);
+    if (hostname !== u.hostname) {
+        u.hostname = hostname;
+        context.logger.info('Overriding hostname', {
+            newUrl: u.href,
+            originalUrl: url,
+        });
+        url = u.href;
+    }
+    const input = { url, ...rest };
     try {
         return await multiStepUpload(input, context);
     }
@@ -36428,6 +36447,7 @@ async function tryMultiStepUploadOrFallbackToSingle(input, context) {
         if (axios_default().isAxiosError(err)) {
             // CI doesn't like safe-access here.
             if (err.response && err.response.status === 404) {
+                context.logger.info('Falling back to single step upload');
                 // eslint-disable-next-line import/no-deprecated
                 return await singleStepUpload(input, context);
             }
@@ -36464,7 +36484,7 @@ var axios_default = /*#__PURE__*/__nccwpck_require__.n(axios);
 var ci_info = __nccwpck_require__(3257);
 var ci_info_default = /*#__PURE__*/__nccwpck_require__.n(ci_info);
 ;// CONCATENATED MODULE: ../../package.json
-const package_namespaceObject = JSON.parse('{"name":"@check-run-reporter/cli","version":"1.10.0","description":"A GitHub action for uploading structured test reports to > [check-run-reporter.com](https://www.check-run-reporter.com).","bin":{"crr":"./dist/ncc/index.js"},"main":"./dist/cjs/index.js","module":"./dist/esm/index.js","types":"./dist/types/index.d.ts","engines":{"node":">=14","npm":">=7"},"scripts":{"build":"if command -v gmake 2>/dev/null; then gmake all; else make all; fi","build:types":"tsc --emitDeclarationOnly","eslint":"eslint ${ESLINT_FORMAT_OPTIONS:-} --ignore-path .gitignore","lint":"npm-run-all --continue-on-error --parallel lint:*","lint:changelog":"commitlint --from origin/main --to HEAD","lint:es":"npm run --silent eslint -- .","prelint:types":"mkdirp reports/style","lint:types":"bash -c \\"tsc --noEmit $TSC_OPTIONS\\" ","test":"TZ=UTC jest","prepare":"husky install"},"repository":{"type":"git","url":"git+https://github.com/check-run-reporter/integrations.git"},"keywords":[],"author":"Ian Remmel, LLC","license":"MIT","bugs":{"url":"https://github.com/check-run-reporter/integrations/issues"},"homepage":"https://www.check-run-reporter.com","devDependencies":{"@babel/cli":"^7.15.7","@babel/core":"^7.16.0","@babel/preset-env":"^7.16.5","@babel/preset-typescript":"^7.15.0","@babel/register":"^7.15.3","@commitlint/cli":"^13.1.0","@commitlint/config-conventional":"^13.1.0","@ianwremmel/eslint-plugin-ianwremmel":"^4.4.0","@semantic-release/exec":"^6.0.3","@types/glob":"^7.1.4","@types/jest":"^27.0.2","@types/lodash":"^4.14.178","@types/nock":"^11.1.0","@types/node":"^14.17.17","@typescript-eslint/eslint-plugin":"^4.33.0","@typescript-eslint/parser":"^4.33.0","@vercel/ncc":"^0.31.1","babel-jest":"^27.2.1","eslint":"^7.32.0","eslint-config-prettier":"^8.3.0","eslint-plugin-babel":"^5.3.1","eslint-plugin-compat":"^3.13.0","eslint-plugin-eslint-comments":"^3.2.0","eslint-plugin-import":"^2.24.2","eslint-plugin-jsx-a11y":"^6.4.1","eslint-plugin-markdown":"^2.2.1","eslint-plugin-prettier":"^4.0.0","eslint-plugin-react":"^7.26.0","eslint-plugin-react-hooks":"^4.2.0","husky":"^7.0.4","jest":"^27.2.5","jest-junit":"^13.0.0","lint-staged":"^11.2.0","markdown-toc":"^1.2.0","memfs":"^3.3.0","nock":"^13.1.3","npm-run-all":"^4.1.5","pkg":"^5.3.2","prettier":"^2.4.1","rimraf":"^3.0.2","semantic-release":"^18.0.0","semver":"^7.3.5","typescript":"^4.4.3"},"lint-staged":{"*.js":"npm run eslint -- ","*.ts":"npm run eslint -- "},"dependencies":{"axios":"^0.24.0","axios-retry":"^3.1.9","ci-info":"^3.2.0","form-data":"^4.0.0","glob":"^7.2.0","lodash":"^4.17.21","yargs":"^17.1.1"},"publishConfig":{"access":"public"},"workspaces":["integrations/action"]}');
+const package_namespaceObject = JSON.parse('{"name":"@check-run-reporter/cli","version":"1.10.1","description":"A GitHub action for uploading structured test reports to > [check-run-reporter.com](https://www.check-run-reporter.com).","bin":{"crr":"./dist/ncc/index.js"},"main":"./dist/cjs/index.js","module":"./dist/esm/index.js","types":"./dist/types/index.d.ts","engines":{"node":">=14","npm":">=7"},"scripts":{"build":"if command -v gmake 2>/dev/null; then gmake all; else make all; fi","build:types":"tsc --emitDeclarationOnly","eslint":"eslint ${ESLINT_FORMAT_OPTIONS:-} --ignore-path .gitignore","lint":"npm-run-all --continue-on-error --parallel lint:*","lint:changelog":"commitlint --from origin/main --to HEAD","lint:es":"npm run --silent eslint -- .","prelint:types":"mkdirp reports/style","lint:types":"bash -c \\"tsc --noEmit $TSC_OPTIONS\\" ","test":"TZ=UTC jest","prepare":"husky install"},"repository":{"type":"git","url":"git+https://github.com/check-run-reporter/integrations.git"},"keywords":[],"author":"Ian Remmel, LLC","license":"MIT","bugs":{"url":"https://github.com/check-run-reporter/integrations/issues"},"homepage":"https://www.check-run-reporter.com","devDependencies":{"@babel/cli":"^7.15.7","@babel/core":"^7.16.0","@babel/preset-env":"^7.16.5","@babel/preset-typescript":"^7.15.0","@babel/register":"^7.15.3","@commitlint/cli":"^13.1.0","@commitlint/config-conventional":"^13.1.0","@ianwremmel/eslint-plugin-ianwremmel":"^4.4.0","@semantic-release/exec":"^6.0.3","@types/glob":"^7.1.4","@types/jest":"^27.0.2","@types/lodash":"^4.14.178","@types/nock":"^11.1.0","@types/node":"^14.17.17","@typescript-eslint/eslint-plugin":"^4.33.0","@typescript-eslint/parser":"^4.33.0","@vercel/ncc":"^0.31.1","babel-jest":"^27.2.1","eslint":"^7.32.0","eslint-config-prettier":"^8.3.0","eslint-plugin-babel":"^5.3.1","eslint-plugin-compat":"^3.13.0","eslint-plugin-eslint-comments":"^3.2.0","eslint-plugin-import":"^2.24.2","eslint-plugin-jsx-a11y":"^6.4.1","eslint-plugin-markdown":"^2.2.1","eslint-plugin-prettier":"^4.0.0","eslint-plugin-react":"^7.26.0","eslint-plugin-react-hooks":"^4.2.0","husky":"^7.0.4","jest":"^27.2.5","jest-junit":"^13.0.0","lint-staged":"^11.2.0","markdown-toc":"^1.2.0","memfs":"^3.3.0","nock":"^13.1.3","npm-run-all":"^4.1.5","pkg":"^5.3.2","prettier":"^2.4.1","rimraf":"^3.0.2","semantic-release":"^18.0.0","semver":"^7.3.5","typescript":"^4.4.3"},"lint-staged":{"*.js":"npm run eslint -- ","*.ts":"npm run eslint -- "},"dependencies":{"axios":"^0.24.0","axios-retry":"^3.1.9","ci-info":"^3.2.0","form-data":"^4.0.0","glob":"^7.2.0","lodash":"^4.17.21","yargs":"^17.1.1"},"publishConfig":{"access":"public"},"workspaces":["integrations/action"]}');
 ;// CONCATENATED MODULE: ../../src/lib/axios.ts
 
 
@@ -36917,6 +36937,7 @@ async function findReports() {
  * Wrapper around split to adapt it for github actions
  */
 async function doSplit({
+  hostname,
   label,
   tests,
   token,
@@ -36937,6 +36958,7 @@ async function doSplit({
     const {
       filenames
     } = await (0, _split.split)({
+      hostname,
       label,
       nodeCount: Number(nodeCount),
       nodeIndex: Number(nodeIndex),
@@ -36971,12 +36993,14 @@ async function main() {
   // For lack of a better pattern, we'll default to the same pattern that GitHub
   // uses for checks at the bottom of the PR.
   const label = core.getInput('label') || `${github.context.workflow} / ${github.context.job}`;
+  const hostname = core.getInput('hostname');
   const token = core.getInput('token');
   const url = core.getInput('url');
   const tests = core.getInput('tests');
 
   if (tests) {
     return await doSplit({
+      hostname,
       label,
       tests,
       token,
@@ -36988,6 +37012,7 @@ async function main() {
   const files = await findReports();
   const sha = determineSha();
   await (0, _src.submit)({
+    hostname,
     label,
     report: files,
     root,

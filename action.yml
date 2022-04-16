@@ -5,14 +5,20 @@ branding:
   icon: 'check'
   color: 'orange'
 inputs:
+  hostname:
+    default: api.check-run-reporter.com
+    description: Internal. Do not use unless directed. Supercedes --url
+    required: false
   label:
     description:
       Label that should appear in the GitHub check. Defaults to the step's name.
     required: false
   nodeCount:
     description: The total number of nodes you intend to spin up
+    required: false
   nodeIndex:
     description: This node's index.
+    required: false
   report:
     description: Path or glob to the job's report files. Separate multiple globs with a semicolon
     required: false
