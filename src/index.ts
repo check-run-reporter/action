@@ -12,6 +12,8 @@ import axios from 'axios';
 
 import {submit} from '../../../src';
 import {split} from '../../../src/commands/split';
+import {makeClient} from '../../../src/lib/axios';
+import {Context} from '../../../src/lib/types';
 
 const logger = {
   debug: core.debug.bind(core),
@@ -88,17 +90,15 @@ export async function findReports(): Promise<string[]> {
 }
 
 interface DoSplitInput {
-  readonly hostname: string;
   readonly label: string;
   readonly tests: string;
   readonly token: string;
-  readonly url: string;
 }
 
 /**
  * Wrapper around split to adapt it for github actions
  */
-async function doSplit({hostname, label, tests, token, url}: DoSplitInput) {
+async function doSplit({label, tests, token}: DoSplitInput, {client}: Context) {
   const nodeCount = core.getInput('nodeCount');
   const nodeIndex = core.getInput('nodeIndex');
 
@@ -113,15 +113,13 @@ async function doSplit({hostname, label, tests, token, url}: DoSplitInput) {
   try {
     const {filenames} = await split(
       {
-        hostname,
         label,
         nodeCount: Number(nodeCount),
         nodeIndex: Number(nodeIndex),
         tests: [tests],
         token,
-        url,
       },
-      {logger}
+      {client, logger}
     );
 
     core.info(
@@ -155,17 +153,22 @@ async function main() {
 
   const hostname = core.getInput('hostname');
   const token = core.getInput('token');
-  const url = core.getInput('url');
+
+  const client = makeClient({hostname});
 
   const tests = core.getInput('tests');
   if (tests) {
-    return await doSplit({
-      hostname,
-      label,
-      tests,
-      token,
-      url: `${url}/split`,
-    });
+    return await doSplit(
+      {
+        label,
+        tests,
+        token,
+      },
+      {
+        client,
+        logger,
+      }
+    );
   }
 
   const root = determineRoot();
@@ -175,15 +178,14 @@ async function main() {
 
   await submit(
     {
-      hostname,
       label,
       report: files,
       root,
       sha,
       token,
-      url: `${url}/submissions`,
     },
     {
+      client,
       logger,
     }
   );

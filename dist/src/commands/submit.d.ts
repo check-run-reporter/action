@@ -1,12 +1,10 @@
 import { Context, Optional } from '../lib/types';
 interface SubmitArgs {
-    readonly hostname: string;
     readonly label: Optional<string>;
     readonly report: readonly string[];
     readonly root: string;
     readonly sha: string;
     readonly token: string;
-    readonly url: string;
 }
 /**
  * Submit report files to Check Run Reporter

@@ -10,7 +10,7 @@ export declare type Logger = Pick<Console, LogLevel | 'group' | 'groupEnd'>;
  * @param input input to sanitize into a string
  * @see https://github.com/actions/toolkit/blob/ea81280a4d48fb0308d40f8f12ae00d117f8acb9/packages/core/src/utils.ts#L11-L18
  */
-export declare function toCommandValue(input: any): string;
+export declare function toCommandValue(input: unknown): string;
 export declare const logger: Logger;
 export declare const silentLogger: Logger;
 export {};
