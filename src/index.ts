@@ -5,7 +5,7 @@ import * as glob from '@actions/glob';
 // it's type-only
 // eslint-disable-next-line import/no-unresolved
 import type {PullRequestEvent} from '@octokit/webhooks-types';
-import axios from 'axios';
+import {isAxiosError} from 'axios';
 
 // this is a little weird: we're loading by path instead of by package because
 // we need main to point at src during dev but dist during release.
@@ -130,7 +130,7 @@ async function doSplit({label, tests, token}: DoSplitInput, {client}: Context) {
 
     core.setOutput('tests', filenames.join(' '));
   } catch (err) {
-    if (axios.isAxiosError(err)) {
+    if (isAxiosError(err)) {
       console.error(`Check Run Reporter return a ${err.response?.status}`);
       if (err.response?.data?.message?.details?.[0]?.message) {
         console.error(err.response.data.message.details[0].message);
@@ -193,7 +193,7 @@ async function main() {
 
 if (require.main === module) {
   main().catch((err) => {
-    if (axios.isAxiosError(err)) {
+    if (isAxiosError(err)) {
       core.setFailed(err);
 
       core.error(`Check Run Reporter returned a ${err.response?.status}`);

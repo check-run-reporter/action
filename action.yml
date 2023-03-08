@@ -40,5 +40,5 @@ outputs:
   tests:
     description: The names of the test files to test on this node
 runs:
-  using: 'node12'
+  using: 'node16'
   main: 'dist/index.js'
