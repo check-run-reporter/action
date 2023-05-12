@@ -1,20 +1,14 @@
 import { Context, Optional } from './types';
 interface UploadArgs {
     readonly label: Optional<string>;
+    readonly nodeCount: number;
+    readonly nodeIndex: number;
     readonly report: readonly string[];
     readonly root: string;
     readonly sha: string;
     readonly token: string;
 }
 declare type URLs = Record<string, string>;
-/**
- * Uploads directly to Check Run Reporter. This is a legacy solution that no
- * longer works for large submissions thanks to new backend architecture. It
- * remains for compatibility reasons during the transition period, but multstep
- * is the preferred method going forward.
- * @deprecated use multiStepUpload instead
- */
-export declare function singleStepUpload({ label, report, root, sha, token }: UploadArgs, context: Context): Promise<import("axios").AxiosResponse<any, any>>;
 /**
  * Orchestrates the multi-step upload process.
  * @param args

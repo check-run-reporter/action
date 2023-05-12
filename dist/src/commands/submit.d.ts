@@ -1,6 +1,8 @@
 import { Context, Optional } from '../lib/types';
 interface SubmitArgs {
     readonly label: Optional<string>;
+    readonly nodeCount: number;
+    readonly nodeIndex: number;
     readonly report: readonly string[];
     readonly root: string;
     readonly sha: string;

@@ -1,3 +1,5 @@
+import assert from 'assert';
+
 import * as core from '@actions/core';
 import * as github from '@actions/github';
 import * as glob from '@actions/glob';
@@ -91,6 +93,8 @@ export async function findReports(): Promise<string[]> {
 
 interface DoSplitInput {
   readonly label: string;
+  readonly nodeCount: number;
+  readonly nodeIndex: number;
   readonly tests: string;
   readonly token: string;
 }
@@ -98,15 +102,15 @@ interface DoSplitInput {
 /**
  * Wrapper around split to adapt it for github actions
  */
-async function doSplit({label, tests, token}: DoSplitInput, {client}: Context) {
-  const nodeCount = core.getInput('nodeCount');
-  const nodeIndex = core.getInput('nodeIndex');
-
-  if (!nodeCount) {
+async function doSplit(
+  {label, nodeCount, nodeIndex, tests, token}: DoSplitInput,
+  {client}: Context
+) {
+  if (Number.isNaN(Number(nodeCount))) {
     core.setFailed('Cannot split tests without specifying the nodeCount input');
   }
 
-  if (!nodeIndex) {
+  if (Number.isNaN(Number(nodeIndex))) {
     core.setFailed('Cannot split tests without specifying the nodeIndex input');
   }
 
@@ -114,8 +118,8 @@ async function doSplit({label, tests, token}: DoSplitInput, {client}: Context) {
     const {filenames} = await split(
       {
         label,
-        nodeCount: Number(nodeCount),
-        nodeIndex: Number(nodeIndex),
+        nodeCount,
+        nodeIndex,
         tests: [tests],
         token,
       },
@@ -153,6 +157,10 @@ async function main() {
 
   const hostname = core.getInput('hostname');
   const token = core.getInput('token');
+  const nodeCount = Number(core.getInput('nodeCount'));
+  assert(!Number.isNaN(nodeCount), 'nodeCount must be a number');
+  const nodeIndex = Number(core.getInput('nodeIndex'));
+  assert(!Number.isNaN(nodeIndex), 'nodeIndex must be a number');
 
   const client = makeClient({hostname});
 
@@ -161,6 +169,8 @@ async function main() {
     return await doSplit(
       {
         label,
+        nodeCount,
+        nodeIndex,
         tests,
         token,
       },
@@ -179,6 +189,8 @@ async function main() {
   await submit(
     {
       label,
+      nodeCount,
+      nodeIndex,
       report: files,
       root,
       sha,

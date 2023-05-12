@@ -37829,9 +37829,9 @@ async function split({ tests, label, nodeCount, nodeIndex, token }, context) {
 /* harmony export */   "y_": () => (/* binding */ HOSTNAME),
 /* harmony export */   "GL": () => (/* binding */ BASEPATH),
 /* harmony export */   "nb": () => (/* binding */ PATH_MULTI_STEP_UPLOAD),
-/* harmony export */   "Ly": () => (/* binding */ PATH_SINGLE_STEP_UPLOAD),
 /* harmony export */   "C_": () => (/* binding */ PATH_SPLIT)
 /* harmony export */ });
+/* unused harmony export PATH_SINGLE_STEP_UPLOAD */
 const HOSTNAME = 'api.check-run-reporter.com';
 const BASEPATH = '/';
 const PATH_MULTI_STEP_UPLOAD = '/api/v1/submissions/upload';
@@ -37955,56 +37955,14 @@ var axios_default = /*#__PURE__*/__nccwpck_require__.n(axios);
 // EXTERNAL MODULE: external "fs"
 var external_fs_ = __nccwpck_require__(5747);
 var external_fs_default = /*#__PURE__*/__nccwpck_require__.n(external_fs_);
-// EXTERNAL MODULE: ../../node_modules/form-data/lib/form_data.js
-var form_data = __nccwpck_require__(6271);
-var form_data_default = /*#__PURE__*/__nccwpck_require__.n(form_data);
 // EXTERNAL MODULE: ../../src/constants.ts
 var constants = __nccwpck_require__(7004);
-// EXTERNAL MODULE: ../../src/lib/axios.ts + 1 modules
-var lib_axios = __nccwpck_require__(8950);
 // EXTERNAL MODULE: ../../src/lib/file.ts
 var file = __nccwpck_require__(8236);
 ;// CONCATENATED MODULE: ../../src/lib/upload.ts
 
 
 
-
-
-/**
- * Uploads directly to Check Run Reporter. This is a legacy solution that no
- * longer works for large submissions thanks to new backend architecture. It
- * remains for compatibility reasons during the transition period, but multstep
- * is the preferred method going forward.
- * @deprecated use multiStepUpload instead
- */
-async function singleStepUpload({ label, report, root, sha, token }, context) {
-    const { client, logger } = context;
-    logger.info(`Label: ${label}`);
-    logger.info(`Root: ${root}`);
-    logger.info(`SHA: ${sha}`);
-    const filenames = await (0,file/* multiGlob */._)(report, context);
-    const formData = new (form_data_default())();
-    for (const filename of filenames) {
-        formData.append('report', external_fs_default().createReadStream(filename));
-    }
-    if (label) {
-        formData.append('label', label);
-    }
-    formData.append('root', root);
-    formData.append('sha', sha);
-    const response = await client.post(constants/* PATH_SINGLE_STEP_UPLOAD */.Ly, formData, {
-        auth: { password: token, username: 'token' },
-        headers: {
-            ...formData.getHeaders(),
-        },
-        maxContentLength: Infinity,
-    });
-    logger.info(`Request ID: ${(0,lib_axios.getRequestId)(response)}`);
-    logger.info(`Status: ${response.status}`);
-    logger.info(`StatusText: ${response.statusText}`);
-    logger.info(JSON.stringify(response.data, null, 2));
-    return response;
-}
 /**
  * Orchestrates the multi-step upload process.
  * @param args
@@ -38016,7 +37974,7 @@ async function multiStepUpload(args, context) {
     logger.info(`Label: ${label}`);
     logger.info(`Root: ${root}`);
     logger.info(`SHA: ${sha}`);
-    const filenames = await (0,file/* multiGlob */._)(report, context);
+    const filenames = (0,file/* multiGlob */._)(report, context);
     logger.group('Requesting signed urls');
     const { keys, urls, signature } = await getSignedUploadUrls(args, filenames, context);
     logger.groupEnd();
@@ -38029,8 +37987,8 @@ async function multiStepUpload(args, context) {
 }
 /** Fetches signed URLs */
 async function getSignedUploadUrls(args, filenames, { client }) {
-    const { label, root, sha, token } = args;
-    const response = await client.post(constants/* PATH_MULTI_STEP_UPLOAD */.nb, { filenames, label, root, sha }, {
+    const { label, nodeCount, nodeIndex, root, sha, token } = args;
+    const response = await client.post(constants/* PATH_MULTI_STEP_UPLOAD */.nb, { filenames, label, nodeCount, nodeIndex, root, sha }, {
         auth: { password: token, username: 'token' },
         maxContentLength: Infinity,
         timeout: 30000,
@@ -38053,10 +38011,12 @@ async function uploadToSignedUrls(filenames, urls, { client }) {
  * processing may begin.
  */
 async function finishMultistepUpload(args, keys, signature, { client }) {
-    const { label, root, sha, token } = args;
+    const { label, nodeCount, nodeIndex, root, sha, token } = args;
     const response = await client.patch(constants/* PATH_MULTI_STEP_UPLOAD */.nb, {
         keys,
         label,
+        nodeCount,
+        nodeIndex,
         root,
         sha,
         signature,
@@ -38067,10 +38027,11 @@ async function finishMultistepUpload(args, keys, signature, { client }) {
     return response;
 }
 
+// EXTERNAL MODULE: ../../src/lib/axios.ts + 1 modules
+var lib_axios = __nccwpck_require__(8950);
 ;// CONCATENATED MODULE: ../../src/commands/submit.ts
 
 
-// eslint-disable-next-line import/no-deprecated
 
 
 /**
@@ -38080,7 +38041,7 @@ async function submit_submit(input, context) {
     const { logger } = context;
     try {
         logger.group('Uploading report to Check Run Reporter');
-        await tryMultiStepUploadOrFallbackToSingle(input, context);
+        await multiStepUpload(input, context);
     }
     catch (err) {
         if (axios_default().isAxiosError(err)) {
@@ -38099,28 +38060,6 @@ async function submit_submit(input, context) {
     }
     finally {
         logger.groupEnd();
-    }
-}
-/**
- * Attempts to use multistep upload, but falls back to the legacy system if it
- * gets a 404. This _should_ make things future proof so it'll get more
- * efficient once the new version is released.
- */
-async function tryMultiStepUploadOrFallbackToSingle(input, context) {
-    try {
-        return await multiStepUpload(input, context);
-    }
-    catch (err) {
-        if (axios_default().isAxiosError(err)) {
-            // CI doesn't like safe-access here.
-            if ((err.response && err.response.status === 404) ||
-                err.code === 'ECONNABORTED') {
-                context.logger.info('Received 404 trying to get signed URLs. Assuming feature is notn released yet and falling back to single step upload', { err });
-                // eslint-disable-next-line import/no-deprecated
-                return await singleStepUpload(input, context);
-            }
-        }
-        throw err;
     }
 }
 
@@ -38156,7 +38095,7 @@ var axios_default = /*#__PURE__*/__nccwpck_require__.n(axios);
 var ci_info = __nccwpck_require__(3257);
 var ci_info_default = /*#__PURE__*/__nccwpck_require__.n(ci_info);
 ;// CONCATENATED MODULE: ../../package.json
-const package_namespaceObject = JSON.parse('{"name":"@check-run-reporter/cli","version":"1.11.2","description":"A GitHub action for uploading structured test reports to > [check-run-reporter.com](https://www.check-run-reporter.com).","bin":{"crr":"./dist/ncc/index.js"},"main":"./dist/cjs/index.js","module":"./dist/esm/index.js","types":"./dist/types/index.d.ts","engines":{"node":"=16"},"scripts":{"build":"if command -v gmake 2>/dev/null; then gmake all; else make all; fi","build:types":"tsc --emitDeclarationOnly","eslint":"eslint ${ESLINT_FORMAT_OPTIONS:-} --ignore-path .gitignore","lint":"npm-run-all --continue-on-error --parallel lint:*","lint:changelog":"commitlint --from origin/main --to HEAD","lint:es":"npm run --silent eslint -- .","prelint:types":"mkdirp reports/style","lint:types":"bash -c \\"tsc --noEmit $TSC_OPTIONS\\" ","test":"TZ=UTC jest","prepare":"husky install"},"repository":{"type":"git","url":"git+https://github.com/check-run-reporter/integrations.git"},"keywords":[],"author":"Ian Remmel, LLC","license":"MIT","bugs":{"url":"https://github.com/check-run-reporter/integrations/issues"},"homepage":"https://www.check-run-reporter.com","devDependencies":{"@babel/cli":"^7.15.7","@babel/core":"^7.16.0","@babel/preset-env":"^7.16.5","@babel/preset-typescript":"^7.15.0","@babel/register":"^7.15.3","@commitlint/cli":"^13.1.0","@commitlint/config-conventional":"^13.1.0","@ianwremmel/eslint-plugin-ianwremmel":"^4.4.0","@semantic-release/exec":"^6.0.3","@types/glob":"^7.1.4","@types/jest":"^27.0.2","@types/lodash":"^4.14.178","@types/nock":"^11.1.0","@types/node":"^16","@typescript-eslint/eslint-plugin":"^4.33.0","@typescript-eslint/parser":"^4.33.0","@vercel/ncc":"^0.31.1","babel-jest":"^27.2.1","eslint":"^7.32.0","eslint-config-prettier":"^8.3.0","eslint-plugin-babel":"^5.3.1","eslint-plugin-compat":"^3.13.0","eslint-plugin-eslint-comments":"^3.2.0","eslint-plugin-import":"^2.24.2","eslint-plugin-jsx-a11y":"^6.4.1","eslint-plugin-markdown":"^2.2.1","eslint-plugin-prettier":"^4.0.0","eslint-plugin-react":"^7.26.0","eslint-plugin-react-hooks":"^4.2.0","husky":"^7.0.4","jest":"^27.2.5","jest-junit":"^13.0.0","lint-staged":"^11.2.0","markdown-toc":"^1.2.0","memfs":"^3.3.0","nock":"^13.1.3","npm-run-all":"^4.1.5","pkg":"^5.8.1","prettier":"^2.4.1","rimraf":"^3.0.2","semantic-release":"^18.0.0","semver":"^7.3.5","typescript":"^4.4.3"},"lint-staged":{"*.js":"npm run eslint -- ","*.ts":"npm run eslint -- "},"dependencies":{"axios":"^0.24.0","axios-debug-log":"^0.8.4","axios-retry":"^3.1.9","ci-info":"^3.2.0","form-data":"^4.0.0","glob":"^7.2.0","lodash":"^4.17.21","yargs":"^17.1.1"},"publishConfig":{"access":"public"},"workspaces":["integrations/action"]}');
+const package_namespaceObject = JSON.parse('{"name":"@check-run-reporter/cli","version":"1.12.0","description":"A GitHub action for uploading structured test reports to > [check-run-reporter.com](https://www.check-run-reporter.com).","bin":{"crr":"./dist/ncc/index.js"},"main":"./dist/cjs/index.js","module":"./dist/esm/index.js","types":"./dist/types/index.d.ts","engines":{"node":"=16"},"scripts":{"build":"if command -v gmake 2>/dev/null; then gmake all; else make all; fi","build:types":"tsc --emitDeclarationOnly","eslint":"eslint ${ESLINT_FORMAT_OPTIONS:-} --ignore-path .gitignore","lint":"npm-run-all --continue-on-error --parallel lint:*","lint:changelog":"commitlint --from origin/main --to HEAD","lint:es":"npm run --silent eslint -- .","prelint:types":"mkdirp reports/style","lint:types":"bash -c \\"tsc --noEmit $TSC_OPTIONS\\" ","test":"TZ=UTC jest","prepare":"husky install"},"repository":{"type":"git","url":"git+https://github.com/check-run-reporter/integrations.git"},"keywords":[],"author":"Ian Remmel, LLC","license":"MIT","bugs":{"url":"https://github.com/check-run-reporter/integrations/issues"},"homepage":"https://www.check-run-reporter.com","devDependencies":{"@babel/cli":"^7.15.7","@babel/core":"^7.16.0","@babel/preset-env":"^7.16.5","@babel/preset-typescript":"^7.15.0","@babel/register":"^7.15.3","@commitlint/cli":"^13.1.0","@commitlint/config-conventional":"^13.1.0","@ianwremmel/eslint-plugin-ianwremmel":"^4.4.0","@semantic-release/exec":"^6.0.3","@types/glob":"^7.1.4","@types/jest":"^27.0.2","@types/lodash":"^4.14.178","@types/nock":"^11.1.0","@types/node":"^16","@typescript-eslint/eslint-plugin":"^4.33.0","@typescript-eslint/parser":"^4.33.0","@vercel/ncc":"^0.31.1","babel-jest":"^27.2.1","eslint":"^7.32.0","eslint-config-prettier":"^8.3.0","eslint-plugin-babel":"^5.3.1","eslint-plugin-compat":"^3.13.0","eslint-plugin-eslint-comments":"^3.2.0","eslint-plugin-import":"^2.24.2","eslint-plugin-jsx-a11y":"^6.4.1","eslint-plugin-markdown":"^2.2.1","eslint-plugin-prettier":"^4.0.0","eslint-plugin-react":"^7.26.0","eslint-plugin-react-hooks":"^4.2.0","husky":"^7.0.4","jest":"^27.2.5","jest-junit":"^13.0.0","lint-staged":"^11.2.0","markdown-toc":"^1.2.0","memfs":"^3.3.0","nock":"^13.1.3","npm-run-all":"^4.1.5","pkg":"^5.8.1","prettier":"^2.4.1","rimraf":"^3.0.2","semantic-release":"^18.0.0","semver":"^7.3.5","typescript":"^4.4.3"},"lint-staged":{"*.js":"npm run eslint -- ","*.ts":"npm run eslint -- "},"dependencies":{"axios":"^0.24.0","axios-debug-log":"^0.8.4","axios-retry":"^3.1.9","ci-info":"^3.2.0","form-data":"^4.0.0","glob":"^7.2.0","lodash":"^4.17.21","yargs":"^17.1.1"},"publishConfig":{"access":"public"},"workspaces":["integrations/action"]}');
 // EXTERNAL MODULE: ../../src/constants.ts
 var constants = __nccwpck_require__(7004);
 ;// CONCATENATED MODULE: ../../src/lib/axios.ts
@@ -42718,6 +42657,8 @@ exports.determineRoot = determineRoot;
 exports.determineSha = determineSha;
 exports.findReports = findReports;
 
+var _assert = _interopRequireDefault(__nccwpck_require__(2357));
+
 var core = _interopRequireWildcard(__nccwpck_require__(7117));
 
 var github = _interopRequireWildcard(__nccwpck_require__(4005));
@@ -42735,6 +42676,8 @@ var _axios2 = __nccwpck_require__(8950);
 function _getRequireWildcardCache(nodeInterop) { if (typeof WeakMap !== "function") return null; var cacheBabelInterop = new WeakMap(); var cacheNodeInterop = new WeakMap(); return (_getRequireWildcardCache = function (nodeInterop) { return nodeInterop ? cacheNodeInterop : cacheBabelInterop; })(nodeInterop); }
 
 function _interopRequireWildcard(obj, nodeInterop) { if (!nodeInterop && obj && obj.__esModule) { return obj; } if (obj === null || typeof obj !== "object" && typeof obj !== "function") { return { default: obj }; } var cache = _getRequireWildcardCache(nodeInterop); if (cache && cache.has(obj)) { return cache.get(obj); } var newObj = {}; var hasPropertyDescriptor = Object.defineProperty && Object.getOwnPropertyDescriptor; for (var key in obj) { if (key !== "default" && Object.prototype.hasOwnProperty.call(obj, key)) { var desc = hasPropertyDescriptor ? Object.getOwnPropertyDescriptor(obj, key) : null; if (desc && (desc.get || desc.set)) { Object.defineProperty(newObj, key, desc); } else { newObj[key] = obj[key]; } } } newObj.default = obj; if (cache) { cache.set(obj, newObj); } return newObj; }
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 // this is a little weird: we're loading by path instead of by package because
 // we need main to point at src during dev but dist during release.
@@ -42821,19 +42764,18 @@ async function findReports() {
  */
 async function doSplit({
   label,
+  nodeCount,
+  nodeIndex,
   tests,
   token
 }, {
   client
 }) {
-  const nodeCount = core.getInput('nodeCount');
-  const nodeIndex = core.getInput('nodeIndex');
-
-  if (!nodeCount) {
+  if (Number.isNaN(Number(nodeCount))) {
     core.setFailed('Cannot split tests without specifying the nodeCount input');
   }
 
-  if (!nodeIndex) {
+  if (Number.isNaN(Number(nodeIndex))) {
     core.setFailed('Cannot split tests without specifying the nodeIndex input');
   }
 
@@ -42842,8 +42784,8 @@ async function doSplit({
       filenames
     } = await (0, _split.split)({
       label,
-      nodeCount: Number(nodeCount),
-      nodeIndex: Number(nodeIndex),
+      nodeCount,
+      nodeIndex,
       tests: [tests],
       token
     }, {
@@ -42875,6 +42817,10 @@ async function main() {
   const label = core.getInput('label') || `${github.context.workflow} / ${github.context.job}`;
   const hostname = core.getInput('hostname');
   const token = core.getInput('token');
+  const nodeCount = Number(core.getInput('nodeCount'));
+  (0, _assert.default)(!Number.isNaN(nodeCount), 'nodeCount must be a number');
+  const nodeIndex = Number(core.getInput('nodeIndex'));
+  (0, _assert.default)(!Number.isNaN(nodeIndex), 'nodeIndex must be a number');
   const client = (0, _axios2.makeClient)({
     hostname
   });
@@ -42883,6 +42829,8 @@ async function main() {
   if (tests) {
     return await doSplit({
       label,
+      nodeCount,
+      nodeIndex,
       tests,
       token
     }, {
@@ -42896,6 +42844,8 @@ async function main() {
   const sha = determineSha();
   await (0, _src.submit)({
     label,
+    nodeCount,
+    nodeIndex,
     report: files,
     root,
     sha,

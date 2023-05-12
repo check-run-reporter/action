@@ -44,11 +44,11 @@ jobs:
         steps:
             - uses: actions/checkout@master
             - uses: actions/setup-node@v1
-            with:
+              with:
                 node-version: '12.x'
             - run: npm ci
             - run: npm test
-            - uses: check-run-reporter/action@v2.11.2
+            - uses: check-run-reporter/action@v2.12.0
               # always run, otherwise you'll only see results for passing builds
               if: ${{ always() }}
               with:
@@ -60,9 +60,9 @@ You can declare the action multiple times if you'd like to do separate
 submissions with different labels (for example, you want separate style report
 and test report submissions).
 
-Note the `if: ${{ always() }}`. By default, GitHub actions exit as soon as step
-fails. You'll need to tell GitHub to run even in event of failure to ensure your
-reports are submitted.
+Note the `if: ${{ always() }}`. By default, GitHub actions exit as soon as a
+step fails. You'll need to tell GitHub to run even in event of failure to ensure
+your reports are submitted.
 
 > See [action.yml](action.yml) for full configuration options.
 

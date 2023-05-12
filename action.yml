@@ -1,6 +1,6 @@
 name: 'Check Run Reporter'
 description: |
-  A GitHub action for uploading structured test reports to Check Run Reporter
+  A GitHub action for uploading structured test reports to check-run-reporter.com for reporting, stability analysic, and optimization.
 branding:
   icon: 'check'
   color: 'orange'
@@ -13,9 +13,11 @@ inputs:
       Label that should appear in the GitHub check. Defaults to the step's name.
     required: false
   nodeCount:
+    default: '1'
     description: The total number of nodes you intend to spin up
     required: false
   nodeIndex:
+    default: '0'
     description: This node's index.
     required: false
   report:
