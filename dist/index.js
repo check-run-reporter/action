@@ -9358,7 +9358,9 @@ const env = process.env
 
 // Used for testing only
 Object.defineProperty(exports, "_vendors", ({
-  value: vendors.map(function (v) { return v.constant })
+  value: vendors.map(function (v) {
+    return v.constant
+  })
 }))
 
 exports.name = null
@@ -9372,46 +9374,68 @@ vendors.forEach(function (vendor) {
 
   exports[vendor.constant] = isCI
 
-  if (isCI) {
-    exports.name = vendor.name
+  if (!isCI) {
+    return
+  }
 
-    switch (typeof vendor.pr) {
-      case 'string':
-        // "pr": "CIRRUS_PR"
-        exports.isPR = !!env[vendor.pr]
-        break
-      case 'object':
-        if ('env' in vendor.pr) {
-          // "pr": { "env": "BUILDKITE_PULL_REQUEST", "ne": "false" }
-          exports.isPR = vendor.pr.env in env && env[vendor.pr.env] !== vendor.pr.ne
-        } else if ('any' in vendor.pr) {
-          // "pr": { "any": ["ghprbPullId", "CHANGE_ID"] }
-          exports.isPR = vendor.pr.any.some(function (key) {
-            return !!env[key]
-          })
-        } else {
-          // "pr": { "DRONE_BUILD_EVENT": "pull_request" }
-          exports.isPR = checkEnv(vendor.pr)
-        }
-        break
-      default:
-        // PR detection not supported for this vendor
-        exports.isPR = null
-    }
+  exports.name = vendor.name
+
+  switch (typeof vendor.pr) {
+    case 'string':
+      // "pr": "CIRRUS_PR"
+      exports.isPR = !!env[vendor.pr]
+      break
+    case 'object':
+      if ('env' in vendor.pr) {
+        // "pr": { "env": "BUILDKITE_PULL_REQUEST", "ne": "false" }
+        exports.isPR = vendor.pr.env in env && env[vendor.pr.env] !== vendor.pr.ne
+      } else if ('any' in vendor.pr) {
+        // "pr": { "any": ["ghprbPullId", "CHANGE_ID"] }
+        exports.isPR = vendor.pr.any.some(function (key) {
+          return !!env[key]
+        })
+      } else {
+        // "pr": { "DRONE_BUILD_EVENT": "pull_request" }
+        exports.isPR = checkEnv(vendor.pr)
+      }
+      break
+    default:
+      // PR detection not supported for this vendor
+      exports.isPR = null
   }
 })
 
 exports.isCI = !!(
-  env.CI || // Travis CI, CircleCI, Cirrus CI, Gitlab CI, Appveyor, CodeShip, dsari
-  env.CONTINUOUS_INTEGRATION || // Travis CI, Cirrus CI
+  env.CI !== 'false' && // Bypass all checks if CI env is explicitly set to 'false'
+  (env.BUILD_ID || // Jenkins, Cloudbees
   env.BUILD_NUMBER || // Jenkins, TeamCity
+  env.CI || // Travis CI, CircleCI, Cirrus CI, Gitlab CI, Appveyor, CodeShip, dsari
+  env.CI_APP_ID || // Appflow
+  env.CI_BUILD_ID || // Appflow
+  env.CI_BUILD_NUMBER || // Appflow
+  env.CI_NAME || // Codeship and others
+  env.CONTINUOUS_INTEGRATION || // Travis CI, Cirrus CI
   env.RUN_ID || // TaskCluster, dsari
   exports.name ||
-  false
+  false)
 )
 
 function checkEnv (obj) {
+  // "env": "CIRRUS"
   if (typeof obj === 'string') return !!env[obj]
+
+  // "env": { "env": "NODE", "includes": "/app/.heroku/node/bin/node" }
+  if ('env' in obj) {
+    // Currently there are no other types, uncomment when there are
+    // if ('includes' in obj) {
+    return env[obj.env] && env[obj.env].includes(obj.includes)
+    // }
+  }
+  if ('any' in obj) {
+    return obj.any.some(function (k) {
+      return !!env[k]
+    })
+  }
   return Object.keys(obj).every(function (k) {
     return env[k] === obj[k]
   })
@@ -9970,7 +9994,7 @@ function setup(env) {
 
 	/**
 	* Selects a color for a debug namespace
-	* @param {String} namespace The namespace string for the for the debug instance to be colored
+	* @param {String} namespace The namespace string for the debug instance to be colored
 	* @return {Number|String} An ANSI color code for the given namespace
 	* @api private
 	*/
@@ -10115,7 +10139,7 @@ function setup(env) {
 			namespaces = split[i].replace(/\*/g, '.*?');
 
 			if (namespaces[0] === '-') {
-				createDebug.skips.push(new RegExp('^' + namespaces.substr(1) + '$'));
+				createDebug.skips.push(new RegExp('^' + namespaces.slice(1) + '$'));
 			} else {
 				createDebug.names.push(new RegExp('^' + namespaces + '$'));
 			}
@@ -10674,6 +10698,30 @@ var Writable = (__nccwpck_require__(2781).Writable);
 var assert = __nccwpck_require__(9491);
 var debug = __nccwpck_require__(7392);
 
+// Whether to use the native URL object or the legacy url module
+var useNativeURL = false;
+try {
+  assert(new URL());
+}
+catch (error) {
+  useNativeURL = error.code === "ERR_INVALID_URL";
+}
+
+// URL fields to preserve in copy operations
+var preservedUrlFields = [
+  "auth",
+  "host",
+  "hostname",
+  "href",
+  "path",
+  "pathname",
+  "port",
+  "protocol",
+  "query",
+  "search",
+  "hash",
+];
+
 // Create handlers that pass events from native requests
 var events = ["abort", "aborted", "connect", "error", "socket", "timeout"];
 var eventHandlers = Object.create(null);
@@ -10683,19 +10731,20 @@ events.forEach(function (event) {
   };
 });
 
+// Error types with codes
 var InvalidUrlError = createErrorType(
   "ERR_INVALID_URL",
   "Invalid URL",
   TypeError
 );
-// Error types with codes
 var RedirectionError = createErrorType(
   "ERR_FR_REDIRECTION_FAILURE",
   "Redirected request failed"
 );
 var TooManyRedirectsError = createErrorType(
   "ERR_FR_TOO_MANY_REDIRECTS",
-  "Maximum number of redirects exceeded"
+  "Maximum number of redirects exceeded",
+  RedirectionError
 );
 var MaxBodyLengthExceededError = createErrorType(
   "ERR_FR_MAX_BODY_LENGTH_EXCEEDED",
@@ -10705,6 +10754,9 @@ var WriteAfterEndError = createErrorType(
   "ERR_STREAM_WRITE_AFTER_END",
   "write after end"
 );
+
+// istanbul ignore next
+var destroy = Writable.prototype.destroy || noop;
 
 // An HTTP(S) request that can be redirected
 function RedirectableRequest(options, responseCallback) {
@@ -10727,7 +10779,13 @@ function RedirectableRequest(options, responseCallback) {
   // React to responses of native requests
   var self = this;
   this._onNativeResponse = function (response) {
-    self._processResponse(response);
+    try {
+      self._processResponse(response);
+    }
+    catch (cause) {
+      self.emit("error", cause instanceof RedirectionError ?
+        cause : new RedirectionError({ cause: cause }));
+    }
   };
 
   // Perform the first request
@@ -10736,8 +10794,15 @@ function RedirectableRequest(options, responseCallback) {
 RedirectableRequest.prototype = Object.create(Writable.prototype);
 
 RedirectableRequest.prototype.abort = function () {
-  abortRequest(this._currentRequest);
+  destroyRequest(this._currentRequest);
+  this._currentRequest.abort();
   this.emit("abort");
+};
+
+RedirectableRequest.prototype.destroy = function (error) {
+  destroyRequest(this._currentRequest, error);
+  destroy.call(this, error);
+  return this;
 };
 
 // Writes buffered data to the current native request
@@ -10852,6 +10917,7 @@ RedirectableRequest.prototype.setTimeout = function (msecs, callback) {
     self.removeListener("abort", clearTimer);
     self.removeListener("error", clearTimer);
     self.removeListener("response", clearTimer);
+    self.removeListener("close", clearTimer);
     if (callback) {
       self.removeListener("timeout", callback);
     }
@@ -10878,6 +10944,7 @@ RedirectableRequest.prototype.setTimeout = function (msecs, callback) {
   this.on("abort", clearTimer);
   this.on("error", clearTimer);
   this.on("response", clearTimer);
+  this.on("close", clearTimer);
 
   return this;
 };
@@ -10936,8 +11003,7 @@ RedirectableRequest.prototype._performRequest = function () {
   var protocol = this._options.protocol;
   var nativeProtocol = this._options.nativeProtocols[protocol];
   if (!nativeProtocol) {
-    this.emit("error", new TypeError("Unsupported protocol " + protocol));
-    return;
+    throw new TypeError("Unsupported protocol " + protocol);
   }
 
   // If specified, use the agent corresponding to the protocol
@@ -11029,15 +11095,14 @@ RedirectableRequest.prototype._processResponse = function (response) {
   }
 
   // The response is a redirect, so abort the current request
-  abortRequest(this._currentRequest);
+  destroyRequest(this._currentRequest);
   // Discard the remainder of the response to avoid waiting for data
   response.destroy();
 
   // RFC7231§6.4: A client SHOULD detect and intervene
   // in cyclical redirections (i.e., "infinite" redirection loops).
   if (++this._redirectCount > this._options.maxRedirects) {
-    this.emit("error", new TooManyRedirectsError());
-    return;
+    throw new TooManyRedirectsError();
   }
 
   // Store the request headers if applicable
@@ -11071,33 +11136,23 @@ RedirectableRequest.prototype._processResponse = function (response) {
   var currentHostHeader = removeMatchingHeaders(/^host$/i, this._options.headers);
 
   // If the redirect is relative, carry over the host of the last request
-  var currentUrlParts = url.parse(this._currentUrl);
+  var currentUrlParts = parseUrl(this._currentUrl);
   var currentHost = currentHostHeader || currentUrlParts.host;
   var currentUrl = /^\w+:/.test(location) ? this._currentUrl :
     url.format(Object.assign(currentUrlParts, { host: currentHost }));
 
-  // Determine the URL of the redirection
-  var redirectUrl;
-  try {
-    redirectUrl = url.resolve(currentUrl, location);
-  }
-  catch (cause) {
-    this.emit("error", new RedirectionError({ cause: cause }));
-    return;
-  }
-
   // Create the redirected request
-  debug("redirecting to", redirectUrl);
+  var redirectUrl = resolveUrl(location, currentUrl);
+  debug("redirecting to", redirectUrl.href);
   this._isRedirect = true;
-  var redirectUrlParts = url.parse(redirectUrl);
-  Object.assign(this._options, redirectUrlParts);
+  spreadUrlObject(redirectUrl, this._options);
 
   // Drop confidential headers when redirecting to a less secure protocol
   // or to a different domain that is not a superdomain
-  if (redirectUrlParts.protocol !== currentUrlParts.protocol &&
-     redirectUrlParts.protocol !== "https:" ||
-     redirectUrlParts.host !== currentHost &&
-     !isSubdomain(redirectUrlParts.host, currentHost)) {
+  if (redirectUrl.protocol !== currentUrlParts.protocol &&
+     redirectUrl.protocol !== "https:" ||
+     redirectUrl.host !== currentHost &&
+     !isSubdomain(redirectUrl.host, currentHost)) {
     removeMatchingHeaders(/^(?:authorization|cookie)$/i, this._options.headers);
   }
 
@@ -11112,23 +11167,12 @@ RedirectableRequest.prototype._processResponse = function (response) {
       method: method,
       headers: requestHeaders,
     };
-    try {
-      beforeRedirect(this._options, responseDetails, requestDetails);
-    }
-    catch (err) {
-      this.emit("error", err);
-      return;
-    }
+    beforeRedirect(this._options, responseDetails, requestDetails);
     this._sanitizeOptions(this._options);
   }
 
   // Perform the redirected request
-  try {
-    this._performRequest();
-  }
-  catch (cause) {
-    this.emit("error", new RedirectionError({ cause: cause }));
-  }
+  this._performRequest();
 };
 
 // Wraps the key/value object of protocols with redirect functionality
@@ -11148,27 +11192,16 @@ function wrap(protocols) {
 
     // Executes a request, following redirects
     function request(input, options, callback) {
-      // Parse parameters
-      if (isString(input)) {
-        var parsed;
-        try {
-          parsed = urlToOptions(new URL(input));
-        }
-        catch (err) {
-          /* istanbul ignore next */
-          parsed = url.parse(input);
-        }
-        if (!isString(parsed.protocol)) {
-          throw new InvalidUrlError({ input });
-        }
-        input = parsed;
+      // Parse parameters, ensuring that input is an object
+      if (isURL(input)) {
+        input = spreadUrlObject(input);
       }
-      else if (URL && (input instanceof URL)) {
-        input = urlToOptions(input);
+      else if (isString(input)) {
+        input = spreadUrlObject(parseUrl(input));
       }
       else {
         callback = options;
-        options = input;
+        options = validateUrl(input);
         input = { protocol: protocol };
       }
       if (isFunction(options)) {
@@ -11207,27 +11240,57 @@ function wrap(protocols) {
   return exports;
 }
 
-/* istanbul ignore next */
 function noop() { /* empty */ }
 
-// from https://github.com/nodejs/node/blob/master/lib/internal/url.js
-function urlToOptions(urlObject) {
-  var options = {
-    protocol: urlObject.protocol,
-    hostname: urlObject.hostname.startsWith("[") ?
-      /* istanbul ignore next */
-      urlObject.hostname.slice(1, -1) :
-      urlObject.hostname,
-    hash: urlObject.hash,
-    search: urlObject.search,
-    pathname: urlObject.pathname,
-    path: urlObject.pathname + urlObject.search,
-    href: urlObject.href,
-  };
-  if (urlObject.port !== "") {
-    options.port = Number(urlObject.port);
+function parseUrl(input) {
+  var parsed;
+  /* istanbul ignore else */
+  if (useNativeURL) {
+    parsed = new URL(input);
   }
-  return options;
+  else {
+    // Ensure the URL is valid and absolute
+    parsed = validateUrl(url.parse(input));
+    if (!isString(parsed.protocol)) {
+      throw new InvalidUrlError({ input });
+    }
+  }
+  return parsed;
+}
+
+function resolveUrl(relative, base) {
+  /* istanbul ignore next */
+  return useNativeURL ? new URL(relative, base) : parseUrl(url.resolve(base, relative));
+}
+
+function validateUrl(input) {
+  if (/^\[/.test(input.hostname) && !/^\[[:0-9a-f]+\]$/i.test(input.hostname)) {
+    throw new InvalidUrlError({ input: input.href || input });
+  }
+  if (/^\[/.test(input.host) && !/^\[[:0-9a-f]+\](:\d+)?$/i.test(input.host)) {
+    throw new InvalidUrlError({ input: input.href || input });
+  }
+  return input;
+}
+
+function spreadUrlObject(urlObject, target) {
+  var spread = target || {};
+  for (var key of preservedUrlFields) {
+    spread[key] = urlObject[key];
+  }
+
+  // Fix IPv6 hostname
+  if (spread.hostname.startsWith("[")) {
+    spread.hostname = spread.hostname.slice(1, -1);
+  }
+  // Ensure port is a number
+  if (spread.port !== "") {
+    spread.port = Number(spread.port);
+  }
+  // Concatenate path
+  spread.path = spread.search ? spread.pathname + spread.search : spread.pathname;
+
+  return spread;
 }
 
 function removeMatchingHeaders(regex, headers) {
@@ -11253,17 +11316,25 @@ function createErrorType(code, message, baseClass) {
 
   // Attach constructor and set default properties
   CustomError.prototype = new (baseClass || Error)();
-  CustomError.prototype.constructor = CustomError;
-  CustomError.prototype.name = "Error [" + code + "]";
+  Object.defineProperties(CustomError.prototype, {
+    constructor: {
+      value: CustomError,
+      enumerable: false,
+    },
+    name: {
+      value: "Error [" + code + "]",
+      enumerable: false,
+    },
+  });
   return CustomError;
 }
 
-function abortRequest(request) {
+function destroyRequest(request, error) {
   for (var event of events) {
     request.removeListener(event, eventHandlers[event]);
   }
   request.on("error", noop);
-  request.abort();
+  request.destroy(error);
 }
 
 function isSubdomain(subdomain, domain) {
@@ -11282,6 +11353,10 @@ function isFunction(value) {
 
 function isBuffer(value) {
   return typeof value === "object" && ("length" in value);
+}
+
+function isURL(value) {
+  return URL && value instanceof URL;
 }
 
 // Exports
@@ -38095,7 +38170,7 @@ var axios_default = /*#__PURE__*/__nccwpck_require__.n(axios);
 var ci_info = __nccwpck_require__(3257);
 var ci_info_default = /*#__PURE__*/__nccwpck_require__.n(ci_info);
 ;// CONCATENATED MODULE: ../../package.json
-const package_namespaceObject = JSON.parse('{"name":"@check-run-reporter/cli","version":"1.13.0","description":"A GitHub action for uploading structured test reports to > [check-run-reporter.com](https://www.check-run-reporter.com).","bin":{"crr":"./dist/ncc/index.js"},"main":"./dist/cjs/index.js","module":"./dist/esm/index.js","types":"./dist/types/index.d.ts","engines":{"node":"20.x"},"scripts":{"build":"if command -v gmake 2>/dev/null; then gmake all; else make all; fi","build:types":"tsc --emitDeclarationOnly","eslint":"eslint ${ESLINT_FORMAT_OPTIONS:-} --ignore-path .gitignore","lint":"npm-run-all --continue-on-error --parallel lint:*","lint:changelog":"commitlint --from origin/main --to HEAD","lint:es":"npm run --silent eslint -- .","prelint:types":"mkdirp reports/style","lint:types":"bash -c \\"tsc --noEmit $TSC_OPTIONS\\" ","test":"TZ=UTC jest","prepare":"husky install"},"repository":{"type":"git","url":"git+https://github.com/check-run-reporter/integrations.git"},"keywords":[],"author":"Ian Remmel, LLC","license":"MIT","bugs":{"url":"https://github.com/check-run-reporter/integrations/issues"},"homepage":"https://www.check-run-reporter.com","devDependencies":{"@babel/cli":"^7.15.7","@babel/core":"^7.16.0","@babel/preset-env":"^7.16.5","@babel/preset-typescript":"^7.15.0","@babel/register":"^7.15.3","@commitlint/cli":"^13.1.0","@commitlint/config-conventional":"^13.1.0","@ianwremmel/eslint-plugin-ianwremmel":"^4.4.0","@semantic-release/exec":"^6.0.3","@types/glob":"^7.1.4","@types/jest":"^29.5.11","@types/lodash":"^4.14.178","@types/nock":"^11.1.0","@types/node":"^20","@typescript-eslint/eslint-plugin":"^4.33.0","@typescript-eslint/parser":"^4.33.0","@vercel/ncc":"^0.38.1","babel-jest":"^27.2.1","eslint":"^7.32.0","eslint-config-prettier":"^8.3.0","eslint-plugin-babel":"^5.3.1","eslint-plugin-compat":"^3.13.0","eslint-plugin-eslint-comments":"^3.2.0","eslint-plugin-import":"^2.24.2","eslint-plugin-jsx-a11y":"^6.4.1","eslint-plugin-markdown":"^2.2.1","eslint-plugin-prettier":"^4.0.0","eslint-plugin-react":"^7.26.0","eslint-plugin-react-hooks":"^4.2.0","husky":"^7.0.4","jest":"^29.7.0","jest-junit":"^16.0.0","lint-staged":"^11.2.0","markdown-toc":"^1.2.0","memfs":"^3.3.0","nock":"^13.1.3","npm-run-all":"^4.1.5","pkg":"^5.8.1","prettier":"^2.4.1","rimraf":"^3.0.2","semantic-release":"^18.0.0","semver":"^7.3.5","typescript":"^4.4.3"},"lint-staged":{"*.js":"npm run eslint -- ","*.ts":"npm run eslint -- "},"dependencies":{"axios":"^0.24.0","axios-debug-log":"^0.8.4","axios-retry":"^3.1.9","ci-info":"^3.2.0","form-data":"^4.0.0","glob":"^7.2.0","lodash":"^4.17.21","yargs":"^17.1.1"},"publishConfig":{"access":"public"},"workspaces":["integrations/action"]}');
+const package_namespaceObject = JSON.parse('{"name":"@check-run-reporter/cli","version":"1.13.1","description":"A GitHub action for uploading structured test reports to > [check-run-reporter.com](https://www.check-run-reporter.com).","bin":{"crr":"./dist/ncc/index.js"},"main":"./dist/cjs/index.js","module":"./dist/esm/index.js","types":"./dist/types/index.d.ts","engines":{"node":"20.x"},"scripts":{"build":"if command -v gmake 2>/dev/null; then gmake all; else make all; fi","build:types":"tsc --emitDeclarationOnly","eslint":"eslint ${ESLINT_FORMAT_OPTIONS:-} --ignore-path .gitignore","lint":"npm-run-all --continue-on-error --parallel lint:*","lint:changelog":"commitlint --from origin/main --to HEAD","lint:es":"npm run --silent eslint -- .","prelint:types":"mkdirp reports/style","lint:types":"bash -c \\"tsc --noEmit $TSC_OPTIONS\\" ","test":"TZ=UTC jest","prepare":"husky install"},"repository":{"type":"git","url":"git+https://github.com/check-run-reporter/integrations.git"},"keywords":[],"author":"Ian Remmel, LLC","license":"MIT","bugs":{"url":"https://github.com/check-run-reporter/integrations/issues"},"homepage":"https://www.check-run-reporter.com","devDependencies":{"@babel/cli":"^7.15.7","@babel/core":"^7.16.0","@babel/preset-env":"^7.16.5","@babel/preset-typescript":"^7.15.0","@babel/register":"^7.15.3","@commitlint/cli":"^18.6.0","@commitlint/config-conventional":"^18.6.0","@ianwremmel/eslint-plugin-ianwremmel":"^4.4.0","@semantic-release/exec":"^6.0.3","@types/glob":"^7.1.4","@types/jest":"^29.5.11","@types/lodash":"^4.14.178","@types/nock":"^11.1.0","@types/node":"^20","@typescript-eslint/eslint-plugin":"^4.33.0","@typescript-eslint/parser":"^4.33.0","@vercel/ncc":"^0.38.1","babel-jest":"^27.2.1","eslint":"^7.32.0","eslint-config-prettier":"^8.3.0","eslint-plugin-babel":"^5.3.1","eslint-plugin-compat":"^3.13.0","eslint-plugin-eslint-comments":"^3.2.0","eslint-plugin-import":"^2.24.2","eslint-plugin-jsx-a11y":"^6.4.1","eslint-plugin-markdown":"^2.2.1","eslint-plugin-prettier":"^4.0.0","eslint-plugin-react":"^7.26.0","eslint-plugin-react-hooks":"^4.2.0","husky":"^7.0.4","jest":"^29.7.0","jest-junit":"^16.0.0","lint-staged":"^15.2.0","markdown-toc":"^1.2.0","memfs":"^3.3.0","nock":"^13.1.3","npm-run-all":"^4.1.5","pkg":"^5.8.1","prettier":"^2.4.1","rimraf":"^3.0.2","semantic-release":"^23.0.0","semver":"^7.3.5","typescript":"^4.4.3"},"lint-staged":{"*.js":"npm run eslint -- ","*.ts":"npm run eslint -- "},"dependencies":{"axios":"^0.24.0","axios-debug-log":"^0.8.4","axios-retry":"^3.1.9","ci-info":"^4.0.0","form-data":"^4.0.0","glob":"^7.2.0","lodash":"^4.17.21","yargs":"^17.1.1"},"publishConfig":{"access":"public"},"workspaces":["integrations/action"]}');
 // EXTERNAL MODULE: ../../src/constants.ts
 var constants = __nccwpck_require__(7004);
 ;// CONCATENATED MODULE: ../../src/lib/axios.ts
@@ -42533,7 +42608,7 @@ module.exports = axios;
 /***/ ((module) => {
 
 "use strict";
-module.exports = JSON.parse('[{"name":"AppVeyor","constant":"APPVEYOR","env":"APPVEYOR","pr":"APPVEYOR_PULL_REQUEST_NUMBER"},{"name":"Azure Pipelines","constant":"AZURE_PIPELINES","env":"SYSTEM_TEAMFOUNDATIONCOLLECTIONURI","pr":"SYSTEM_PULLREQUEST_PULLREQUESTID"},{"name":"Appcircle","constant":"APPCIRCLE","env":"AC_APPCIRCLE"},{"name":"Bamboo","constant":"BAMBOO","env":"bamboo_planKey"},{"name":"Bitbucket Pipelines","constant":"BITBUCKET","env":"BITBUCKET_COMMIT","pr":"BITBUCKET_PR_ID"},{"name":"Bitrise","constant":"BITRISE","env":"BITRISE_IO","pr":"BITRISE_PULL_REQUEST"},{"name":"Buddy","constant":"BUDDY","env":"BUDDY_WORKSPACE_ID","pr":"BUDDY_EXECUTION_PULL_REQUEST_ID"},{"name":"Buildkite","constant":"BUILDKITE","env":"BUILDKITE","pr":{"env":"BUILDKITE_PULL_REQUEST","ne":"false"}},{"name":"CircleCI","constant":"CIRCLE","env":"CIRCLECI","pr":"CIRCLE_PULL_REQUEST"},{"name":"Cirrus CI","constant":"CIRRUS","env":"CIRRUS_CI","pr":"CIRRUS_PR"},{"name":"AWS CodeBuild","constant":"CODEBUILD","env":"CODEBUILD_BUILD_ARN"},{"name":"Codefresh","constant":"CODEFRESH","env":"CF_BUILD_ID","pr":{"any":["CF_PULL_REQUEST_NUMBER","CF_PULL_REQUEST_ID"]}},{"name":"Codeship","constant":"CODESHIP","env":{"CI_NAME":"codeship"}},{"name":"Drone","constant":"DRONE","env":"DRONE","pr":{"DRONE_BUILD_EVENT":"pull_request"}},{"name":"dsari","constant":"DSARI","env":"DSARI"},{"name":"GitHub Actions","constant":"GITHUB_ACTIONS","env":"GITHUB_ACTIONS","pr":{"GITHUB_EVENT_NAME":"pull_request"}},{"name":"GitLab CI","constant":"GITLAB","env":"GITLAB_CI","pr":"CI_MERGE_REQUEST_ID"},{"name":"GoCD","constant":"GOCD","env":"GO_PIPELINE_LABEL"},{"name":"LayerCI","constant":"LAYERCI","env":"LAYERCI","pr":"LAYERCI_PULL_REQUEST"},{"name":"Hudson","constant":"HUDSON","env":"HUDSON_URL"},{"name":"Jenkins","constant":"JENKINS","env":["JENKINS_URL","BUILD_ID"],"pr":{"any":["ghprbPullId","CHANGE_ID"]}},{"name":"Magnum CI","constant":"MAGNUM","env":"MAGNUM"},{"name":"Netlify CI","constant":"NETLIFY","env":"NETLIFY","pr":{"env":"PULL_REQUEST","ne":"false"}},{"name":"Nevercode","constant":"NEVERCODE","env":"NEVERCODE","pr":{"env":"NEVERCODE_PULL_REQUEST","ne":"false"}},{"name":"Render","constant":"RENDER","env":"RENDER","pr":{"IS_PULL_REQUEST":"true"}},{"name":"Sail CI","constant":"SAIL","env":"SAILCI","pr":"SAIL_PULL_REQUEST_NUMBER"},{"name":"Semaphore","constant":"SEMAPHORE","env":"SEMAPHORE","pr":"PULL_REQUEST_NUMBER"},{"name":"Screwdriver","constant":"SCREWDRIVER","env":"SCREWDRIVER","pr":{"env":"SD_PULL_REQUEST","ne":"false"}},{"name":"Shippable","constant":"SHIPPABLE","env":"SHIPPABLE","pr":{"IS_PULL_REQUEST":"true"}},{"name":"Solano CI","constant":"SOLANO","env":"TDDIUM","pr":"TDDIUM_PR_ID"},{"name":"Strider CD","constant":"STRIDER","env":"STRIDER"},{"name":"TaskCluster","constant":"TASKCLUSTER","env":["TASK_ID","RUN_ID"]},{"name":"TeamCity","constant":"TEAMCITY","env":"TEAMCITY_VERSION"},{"name":"Travis CI","constant":"TRAVIS","env":"TRAVIS","pr":{"env":"TRAVIS_PULL_REQUEST","ne":"false"}},{"name":"Vercel","constant":"VERCEL","env":"NOW_BUILDER"},{"name":"Visual Studio App Center","constant":"APPCENTER","env":"APPCENTER_BUILD_ID"}]');
+module.exports = JSON.parse('[{"name":"Agola CI","constant":"AGOLA","env":"AGOLA_GIT_REF","pr":"AGOLA_PULL_REQUEST_ID"},{"name":"Appcircle","constant":"APPCIRCLE","env":"AC_APPCIRCLE"},{"name":"AppVeyor","constant":"APPVEYOR","env":"APPVEYOR","pr":"APPVEYOR_PULL_REQUEST_NUMBER"},{"name":"AWS CodeBuild","constant":"CODEBUILD","env":"CODEBUILD_BUILD_ARN"},{"name":"Azure Pipelines","constant":"AZURE_PIPELINES","env":"TF_BUILD","pr":{"BUILD_REASON":"PullRequest"}},{"name":"Bamboo","constant":"BAMBOO","env":"bamboo_planKey"},{"name":"Bitbucket Pipelines","constant":"BITBUCKET","env":"BITBUCKET_COMMIT","pr":"BITBUCKET_PR_ID"},{"name":"Bitrise","constant":"BITRISE","env":"BITRISE_IO","pr":"BITRISE_PULL_REQUEST"},{"name":"Buddy","constant":"BUDDY","env":"BUDDY_WORKSPACE_ID","pr":"BUDDY_EXECUTION_PULL_REQUEST_ID"},{"name":"Buildkite","constant":"BUILDKITE","env":"BUILDKITE","pr":{"env":"BUILDKITE_PULL_REQUEST","ne":"false"}},{"name":"CircleCI","constant":"CIRCLE","env":"CIRCLECI","pr":"CIRCLE_PULL_REQUEST"},{"name":"Cirrus CI","constant":"CIRRUS","env":"CIRRUS_CI","pr":"CIRRUS_PR"},{"name":"Codefresh","constant":"CODEFRESH","env":"CF_BUILD_ID","pr":{"any":["CF_PULL_REQUEST_NUMBER","CF_PULL_REQUEST_ID"]}},{"name":"Codemagic","constant":"CODEMAGIC","env":"CM_BUILD_ID","pr":"CM_PULL_REQUEST"},{"name":"Codeship","constant":"CODESHIP","env":{"CI_NAME":"codeship"}},{"name":"Drone","constant":"DRONE","env":"DRONE","pr":{"DRONE_BUILD_EVENT":"pull_request"}},{"name":"dsari","constant":"DSARI","env":"DSARI"},{"name":"Earthly","constant":"EARTHLY","env":"EARTHLY_CI"},{"name":"Expo Application Services","constant":"EAS","env":"EAS_BUILD"},{"name":"Gerrit","constant":"GERRIT","env":"GERRIT_PROJECT"},{"name":"Gitea Actions","constant":"GITEA_ACTIONS","env":"GITEA_ACTIONS"},{"name":"GitHub Actions","constant":"GITHUB_ACTIONS","env":"GITHUB_ACTIONS","pr":{"GITHUB_EVENT_NAME":"pull_request"}},{"name":"GitLab CI","constant":"GITLAB","env":"GITLAB_CI","pr":"CI_MERGE_REQUEST_ID"},{"name":"GoCD","constant":"GOCD","env":"GO_PIPELINE_LABEL"},{"name":"Google Cloud Build","constant":"GOOGLE_CLOUD_BUILD","env":"BUILDER_OUTPUT"},{"name":"Harness CI","constant":"HARNESS","env":"HARNESS_BUILD_ID"},{"name":"Heroku","constant":"HEROKU","env":{"env":"NODE","includes":"/app/.heroku/node/bin/node"}},{"name":"Hudson","constant":"HUDSON","env":"HUDSON_URL"},{"name":"Jenkins","constant":"JENKINS","env":["JENKINS_URL","BUILD_ID"],"pr":{"any":["ghprbPullId","CHANGE_ID"]}},{"name":"LayerCI","constant":"LAYERCI","env":"LAYERCI","pr":"LAYERCI_PULL_REQUEST"},{"name":"Magnum CI","constant":"MAGNUM","env":"MAGNUM"},{"name":"Netlify CI","constant":"NETLIFY","env":"NETLIFY","pr":{"env":"PULL_REQUEST","ne":"false"}},{"name":"Nevercode","constant":"NEVERCODE","env":"NEVERCODE","pr":{"env":"NEVERCODE_PULL_REQUEST","ne":"false"}},{"name":"Prow","constant":"PROW","env":"PROW_JOB_ID"},{"name":"ReleaseHub","constant":"RELEASEHUB","env":"RELEASE_BUILD_ID"},{"name":"Render","constant":"RENDER","env":"RENDER","pr":{"IS_PULL_REQUEST":"true"}},{"name":"Sail CI","constant":"SAIL","env":"SAILCI","pr":"SAIL_PULL_REQUEST_NUMBER"},{"name":"Screwdriver","constant":"SCREWDRIVER","env":"SCREWDRIVER","pr":{"env":"SD_PULL_REQUEST","ne":"false"}},{"name":"Semaphore","constant":"SEMAPHORE","env":"SEMAPHORE","pr":"PULL_REQUEST_NUMBER"},{"name":"Sourcehut","constant":"SOURCEHUT","env":{"CI_NAME":"sourcehut"}},{"name":"Strider CD","constant":"STRIDER","env":"STRIDER"},{"name":"TaskCluster","constant":"TASKCLUSTER","env":["TASK_ID","RUN_ID"]},{"name":"TeamCity","constant":"TEAMCITY","env":"TEAMCITY_VERSION"},{"name":"Travis CI","constant":"TRAVIS","env":"TRAVIS","pr":{"env":"TRAVIS_PULL_REQUEST","ne":"false"}},{"name":"Vela","constant":"VELA","env":"VELA","pr":{"VELA_PULL_REQUEST":"1"}},{"name":"Vercel","constant":"VERCEL","env":{"any":["NOW_BUILDER","VERCEL"]},"pr":"VERCEL_GIT_PULL_REQUEST_ID"},{"name":"Visual Studio App Center","constant":"APPCENTER","env":"APPCENTER_BUILD_ID"},{"name":"Woodpecker","constant":"WOODPECKER","env":{"CI":"woodpecker"},"pr":{"CI_BUILD_EVENT":"pull_request"}},{"name":"Xcode Cloud","constant":"XCODE_CLOUD","env":"CI_XCODE_PROJECT","pr":"CI_PULL_REQUEST_NUMBER"},{"name":"Xcode Server","constant":"XCODE_SERVER","env":"XCS"}]');
 
 /***/ }),
 
@@ -42679,6 +42754,9 @@ function _interopRequireWildcard(obj, nodeInterop) { if (!nodeInterop && obj && 
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
+// webhooks-types doesn't have a valid `main` property, so eslint can't tell
+// it's type-only
+// eslint-disable-next-line import/no-unresolved
 // this is a little weird: we're loading by path instead of by package because
 // we need main to point at src during dev but dist during release.
 const logger = {
