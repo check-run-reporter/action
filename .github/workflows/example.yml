@@ -31,7 +31,7 @@ jobs:
         with:
           # This label is more complex than you probably want. Since we're
           # running this workflow for both push and pull_request events to test
-          # the action itself, we're effectively running the workflwo twice for
+          # the action itself, we're effectively running the workflow twice for
           # each PR Commit and we need to differentiate in the UI.
           label: 'Unit Tests (${{ github.event_name }})'
           report: 'reports/junit/**/*.xml'
